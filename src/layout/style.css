@@ -1,0 +1,61 @@
+:root {
+    --left-column-width: 1fr;
+    --right-column-width: 1fr;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+}
+
+.app {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    height: 100vh;
+}
+
+.content {
+    flex: 1;
+    display: grid;
+    /* define variables here (on the element where they're used or an ancestor) */
+    grid-template-columns: 1fr 4fr 1fr;
+    width: 100%;
+}
+
+header {
+    flex: 0 0 60px;
+    background-color: aqua;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+.left-side {
+    --left-column-width: 6fr;
+    background-color: lightgreen;
+    z-index: 1;
+}
+.right-side {
+    --right-column-width: 6fr;
+    background-color: lightblue;
+    z-index: 1;
+}
+main {
+    /* pointer-events: none; */
+    z-index: -2;
+    background-color: rgb(240, 128, 128);
+}
+
+.show-hide-left-block {
+    display: flex;
+    justify-content: end;
+}
+
+#map {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    background-color: black;
+}
