@@ -1,16 +1,18 @@
+
 import { useEffect, useRef } from "react";
 import { initCanvas } from "../engine/main";
+import type Scene from "../engine/state/Scene";
 
-export default function Center() {
+export default function Center({ setScene, setSelectedObjects }: { setScene: (scene: Scene | null) => void, setSelectedObjects: (objects: any[]) => void }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (canvas) {
-            // ...установка размеров...
-            initCanvas(canvas);
+            const scene = initCanvas(canvas);
+            scene.setSelectedObjects = setSelectedObjects;
+            setScene(scene);
         }
-        // Можно добавить очистку, если нужно
         return () => {
             if (canvas) {
                 const ctx = canvas.getContext("2d");
@@ -21,8 +23,7 @@ export default function Center() {
 
     return (
         <>
-            <main>
-            </main>
+            <main></main>
             <canvas id="map" ref={canvasRef} style={{ width: '100%', height: '100%' }}></canvas>
         </>
     );

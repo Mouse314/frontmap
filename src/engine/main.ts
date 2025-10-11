@@ -14,8 +14,10 @@ export function initCanvas(canvas: HTMLCanvasElement) {
 
     const defenceLine = new DefenceLine("defenceLine", new Point(0, 0), 1, [new Point(0, 0), new Point(-1, 1), new Point(4, 2), new Point(3, 3)], "blue");
 
-    scene.setObjects([brigade1, brigade2, brigade3, brigade4, brigade5, defenceLine]);
+    scene.setObjects([brigade1, brigade2, brigade5, brigade3, brigade4, defenceLine]);
 
     scene.render();
+
+    return scene;
 }
 
