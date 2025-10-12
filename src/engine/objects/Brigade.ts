@@ -1,3 +1,5 @@
+import Color from '../color/Color';
+import { COLOR_GREY, COLOR_GREY_SOFT, COLOR_ORANGE } from '../color/ColorConstants';
 import Point from '../math/Point';
 import type Rect from '../math/Rect';
 import Size from '../math/Size';
@@ -9,8 +11,10 @@ export default class Brigade implements MapObject {
     name: string;
     position: Point;
     scale: number;
-    color: string;
+    color: Color;
     isEditingMode: boolean = false;
+
+    gray: number = 0;
 
     type: MapObjectType = 'Brigade';
 
@@ -18,7 +22,7 @@ export default class Brigade implements MapObject {
         this.name = name;
         this.position = position;
         this.scale = scale;
-        this.color = color;
+        this.color = new Color(color);
     }
 
     setPosition(position: Point) {
@@ -69,8 +73,23 @@ export default class Brigade implements MapObject {
         const screenPoint = scene.worldToScreen(this.position);
         const screenSize = scene.worldSizeToScreen(this.calculateScreenScale(scene));
 
+        // Мягкая подложка
+        const backColor = this.color.lerp(new Color("rgba(255, 255, 255, 1)"), 0.5).lerp(COLOR_GREY_SOFT, this.gray).toString();
+
+        ctx.fillStyle = this.isEditingMode ? COLOR_ORANGE.toString() : backColor;
+        ctx.roundRect(
+            screenPoint.x - screenSize.width / 2,
+            screenPoint.y - screenSize.height / 2,
+            screenSize.width,
+            screenSize.height,
+            screenSize.width / 10
+        );
+        ctx.fill();
+
+        const mixedColor = this.color.lerp(COLOR_GREY, this.gray).toString();
+
         // Прямоугольник
-        ctx.strokeStyle = this.isEditingMode ? "orange" : this.color;
+        ctx.strokeStyle = mixedColor;
         ctx.lineWidth = this.scale * 2;
         ctx.beginPath();
         ctx.roundRect(
@@ -83,7 +102,7 @@ export default class Brigade implements MapObject {
         ctx.stroke();
 
         // Перекрёстные линии
-        ctx.strokeStyle = this.isEditingMode ? "orange" : this.color;
+        ctx.strokeStyle = mixedColor;
         ctx.lineWidth = this.scale * 2;
         ctx.beginPath();
         ctx.moveTo(

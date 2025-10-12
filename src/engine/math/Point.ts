@@ -20,7 +20,7 @@ export default class Point {
         return new Point(this.x - other.x, this.y - other.y);
     }
 
-    public setPos(x: number, y: number) {
+    public setPosition(x: number, y: number) {
         this.x = x;
         this.y = y;
     }

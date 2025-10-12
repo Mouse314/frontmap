@@ -1,16 +1,23 @@
-
 import { useEffect, useRef } from "react";
 import { initCanvas } from "../engine/main";
 import type Scene from "../engine/state/Scene";
+import type MapObject from "../engine/objects/MapObject";
 
-export default function Center({ setScene, setSelectedObjects }: { setScene: (scene: Scene | null) => void, setSelectedObjects: (objects: any[]) => void }) {
+type CenterProps = {
+    setScene: (scene: Scene | null) => void;
+    setSelectedObjects: (objects: MapObject[]) => void;
+};
+
+export default function Center({ setScene, setSelectedObjects }: CenterProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const sceneRef = useRef<Scene | null>(null);
 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (canvas) {
             const scene = initCanvas(canvas);
             scene.setSelectedObjects = setSelectedObjects;
+            sceneRef.current = scene;
             setScene(scene);
         }
         return () => {

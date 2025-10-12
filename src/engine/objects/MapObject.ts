@@ -1,3 +1,4 @@
+import type Color from "../color/Color";
 import type Point from "../math/Point";
 import type Rect from "../math/Rect";
 import type Scene from "../state/Scene";
@@ -9,7 +10,8 @@ export default interface MapObject {
     scale: number;
     isEditingMode: boolean;
     type: MapObjectType;
-    color: string;
+    color: Color;
+    gray?: number;
     setPosition: (position: Point) => void;
     translate: (delta: Point, point?: Point | null) => void;
     draw: (scene: Scene) => void;

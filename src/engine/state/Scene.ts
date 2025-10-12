@@ -23,11 +23,12 @@ export default class Scene {
     mouseDownPos: Point = new Point(0, 0);
 
     public selectionRect: Rect | null = null;
+    prevMousePos: Point = new Point(0, 0);
+    isShifting: boolean = false;
 
     // React events
     public setSelectedObjects: ((objects: MapObject[]) => void) | null = null;
-    prevMousePos: Point = new Point(0, 0);
-    isShifting: boolean = false;
+    public addingObject: MapObject | null = null;
 
     constructor(canvas: HTMLCanvasElement) {
 
@@ -103,6 +104,7 @@ export default class Scene {
     }
 
     public isMouseAnyNear = false;
+    public defenceLineNearestPoint: Point | null = null;
     private onMouseDown(event: MouseEvent) {
         this.isMouseDown = true;
         this.lastMousePos = this.getMousePos(event);
@@ -119,6 +121,7 @@ export default class Scene {
         for (const object of this.selectedObjects) {
             if (object.isMouseNear(this, this.lastMousePos)) {
                 this.isMouseAnyNear = true;
+                if (object.getNearestPoint) this.defenceLineNearestPoint = object.getNearestPoint(this, this.lastMousePos);
                 return;
             }
         }
@@ -139,41 +142,37 @@ export default class Scene {
         if (Math.abs(mousePos.x - this.mouseDownPos.x) < 3 && Math.abs(mousePos.y - this.mouseDownPos.y) < 3) {
             // Mouse click detected
 
-            let foundSelected = false;
+            if (this.addingObject) {
+                this.objects.push(this.addingObject);
 
-            for (const object of this.objects) {
-                if (object.isMouseNear(this, mousePos) && !foundSelected) {
-                    if (this.isShifting) {
-                        if (object.isEditingMode) {
-                            object.isEditingMode = false;
-                            this.selectedObjects = this.objects.filter(obj => obj.isEditingMode);
-                        }
-                        else {
-                            object.isEditingMode = true;
-                            this.selectedObjects = [object];
-                            this.render();
-                            return;
-                        }
-                    }
-                    else {
+                this.addingObject = null;
+            }
+            else {
+                let foundSelected = false;
+
+                for (const object of this.objects) {
+                    if (object.isMouseNear(this, mousePos) && !foundSelected) {
+
                         object.isEditingMode = true;
                         this.selectedObjects = [object];
+
+
+                        if (this.setSelectedObjects) this.setSelectedObjects([...this.selectedObjects]);
+                        foundSelected = true;
+                        this.render();
+                        return;
                     }
+                    else {
+                        object.isEditingMode = false;
+                    }
+                }
 
+                if (!foundSelected) {
+                    this.selectedObjects = [];
                     if (this.setSelectedObjects) this.setSelectedObjects([...this.selectedObjects]);
-                    foundSelected = true;
-                    this.render();
-                    return;
-                }
-                else {
-                    object.isEditingMode = false;
                 }
             }
 
-            if (!foundSelected) {
-                this.selectedObjects = [];
-                if (this.setSelectedObjects) this.setSelectedObjects([...this.selectedObjects]);
-            }
         }
 
         this.render();
@@ -214,15 +213,12 @@ export default class Scene {
                             object.translate(worldMouseDelta);
                         }
                         else if (object.type === 'DefenceLine') {
-                            if (this.selectedObjects.length > 1) {
+                            if (this.selectedObjects.length > 1 || this.isShifting) {
                                 object.translate(worldMouseDelta);
                             }
                             else {
-                                const nearestPoint = typeof object.getNearestPoint === "function"
-                                    ? object.getNearestPoint(this, mousePos)
-                                    : undefined;
-                                if (nearestPoint) {
-                                    object.translate(worldMouseDelta, nearestPoint);
+                                if (this.defenceLineNearestPoint) {
+                                    object.translate(worldMouseDelta, this.defenceLineNearestPoint);
                                 }
                             }
                         }
@@ -261,6 +257,14 @@ export default class Scene {
             this.render();
             this.prevMousePos = mousePos;
         }
+        else {
+            if (this.addingObject) {
+                this.addingObject.setPosition(worldMousePos);
+                this.render();
+            }
+        }
+
+        this.lastMousePos = mousePos;
     }
     private onContextMenu(event: MouseEvent) {
         event.preventDefault();
@@ -360,12 +364,20 @@ export default class Scene {
 
         this.objects.forEach((object) => object.draw(this));
 
+        // Отрисовка добавляемого объекта
+        if (this.addingObject) {
+            this.addingObject.draw(this);
+        }
+
         // Отрисовка рамки выделения
         if (this.selectionRect) {
             this.selectionRect.draw(this);
         }
 
         // Обновление Реакт окружения
+        for (const object of this.objects) {
+            object.isEditingMode = false;
+        }
         for (const object of this.selectedObjects) {
             object.isEditingMode = true;
         }

@@ -18,7 +18,7 @@ function App() {
     <div className="app">
       <Header />
       <div className="content" style={{gridTemplateColumns: `${isLeftVisible ? '1fr' : '50px'} 4fr ${isRightVisible ? '1fr' : '100px'}`}}>
-        <LeftSide changeVisible={setIsLeftVisible} />
+        <LeftSide changeVisible={setIsLeftVisible} scene={scene} />
         <Center setSelectedObjects={setSelectedObjects} setScene={setScene} />
         <RightSide changeVisible={setIsRightVisible} selectedObjects={selectedObjects} scene={scene} />
       </div>
