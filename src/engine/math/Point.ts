@@ -16,6 +16,12 @@ export default class Point {
         this.y += delta.y;
     }
 
+    public lerp(target: Point, t: number): Point {
+        const x = this.x + (target.x - this.x) * t;
+        const y = this.y + (target.y - this.y) * t;
+        return new Point(x, y);
+    }
+
     public subtract(other: Point): Point {
         return new Point(this.x - other.x, this.y - other.y);
     }

@@ -1,3 +1,5 @@
+import Animation from "../animation/Animation";
+import TimeManager from "../animation/TimeManager";
 import Point from "../math/Point";
 import Rect from "../math/Rect";
 import Size from "../math/Size";
@@ -30,6 +32,11 @@ export default class Scene {
     public setSelectedObjects: ((objects: MapObject[]) => void) | null = null;
     public addingObject: MapObject | null = null;
 
+    // Animation controller
+    public animationController: Animation;
+    public timeManager: TimeManager;
+    public day: number = 0;
+
     constructor(canvas: HTMLCanvasElement) {
 
         // Canvas init
@@ -52,6 +59,9 @@ export default class Scene {
         this.scale = 50;
 
         this.lastMousePos = new Point(0, 0);
+
+        this.timeManager = new TimeManager('days');
+        this.animationController = new Animation(this.timeManager);
 
         this.canvas.addEventListener("mousedown", (event) => this.onMouseDown(event));
         this.canvas.addEventListener("mouseup", (event) => this.onMouseUp(event));
@@ -260,6 +270,8 @@ export default class Scene {
         else {
             if (this.addingObject) {
                 this.addingObject.setPosition(worldMousePos);
+                this.addingObject.dayStart = this.day;
+                this.addingObject.dayEnd = this.day;
                 this.render();
             }
         }
@@ -283,6 +295,13 @@ export default class Scene {
     private onKeyDown(event: KeyboardEvent) {
         if (event.key === 'Shift') {
             this.isShifting = true;
+        }
+        else if (event.key === 'Delete') {
+            this.selectedObjects.forEach(object => {
+                object.deleted = true;
+            });
+            this.selectedObjects = [];
+            this.render();
         }
     }
     private onKeyUp(event: KeyboardEvent) {
@@ -350,6 +369,22 @@ export default class Scene {
         this.zoomAnimationFrame = requestAnimationFrame(() => this.animateZoom());
     }
 
+    public addNewDay() {
+        this.timeManager.rangeLen++;
+        this.day++;
+
+        for (const object of this.objects) {
+            if (object.deleted) continue;
+            object.prevStates[object.prevStates.length - 1] = object.clone();
+            object.prevStates.push(object);
+            object.dayEnd = this.day;
+        }
+
+        console.log(this.objects);
+
+        this.render();
+    }
+
     public render() {
         // Отрисовка сцены
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -362,7 +397,13 @@ export default class Scene {
             this.ctx.drawImage(this.backgroundImage, topLeft.x, topLeft.y, width, height);
         }
 
-        this.objects.forEach((object) => object.draw(this));
+        // Отрисовка объектов
+        for (const object of this.objects) {
+            if (object.deleted) continue;
+            if (this.day >= object.dayStart && this.day <= object.dayEnd) {
+                object.prevStates[this.day - object.dayStart + 1]?.draw(this);
+            }
+        }
 
         // Отрисовка добавляемого объекта
         if (this.addingObject) {

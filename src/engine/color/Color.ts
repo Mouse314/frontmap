@@ -57,4 +57,8 @@ export default class Color {
 
         return new Color(`rgba(${r}, ${g}, ${b}, ${a})`);
     }
+
+    copy(): Color {
+        return new Color(`rgba(${this.r}, ${this.g}, ${this.b}, ${this.a})`);
+    }
 }

@@ -7,6 +7,7 @@ import RightSide from "./layout/RightSide";
 import './layout/style.css';
 import type Scene from "./engine/state/Scene";
 import type MapObject from "./engine/objects/MapObject";
+import Footer from "./layout/Footer";
 
 function App() {
   const [isLeftVisible, setIsLeftVisible] = useState(false);
@@ -17,9 +18,12 @@ function App() {
   return (
     <div className="app">
       <Header />
-      <div className="content" style={{gridTemplateColumns: `${isLeftVisible ? '1fr' : '50px'} 4fr ${isRightVisible ? '1fr' : '100px'}`}}>
+      <div className="content" style={{ gridTemplateColumns: `${isLeftVisible ? '1fr' : '50px'} 4fr ${isRightVisible ? '1fr' : '100px'}` }}>
         <LeftSide changeVisible={setIsLeftVisible} scene={scene} />
-        <Center setSelectedObjects={setSelectedObjects} setScene={setScene} />
+        <div className="center-block">
+          <Center setSelectedObjects={setSelectedObjects} setScene={setScene} />
+          <Footer scene={scene} />
+        </div>
         <RightSide changeVisible={setIsRightVisible} selectedObjects={selectedObjects} scene={scene} />
       </div>
     </div>

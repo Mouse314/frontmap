@@ -8,6 +8,9 @@ import type MapObject from "./MapObject";
 import type { MapObjectType } from "./Types";
 
 export default class DefenceLine implements MapObject {
+
+    deleted: boolean = false;
+
     name: string;
     position: Point;
     scale: number;
@@ -22,6 +25,10 @@ export default class DefenceLine implements MapObject {
     gray: number = 0;
 
     type: MapObjectType = 'DefenceLine';
+
+    prevStates: (DefenceLine | null)[] = [null, this];
+    dayStart: number = 0;
+    dayEnd: number = 0;
 
     constructor(name: string, position: Point, scale: number, points: Point[], color: string) {
         this.name = name;
@@ -191,5 +198,68 @@ export default class DefenceLine implements MapObject {
         }
 
         ctx.restore();
+    }
+
+    public clone(): MapObject {
+        return new DefenceLine(
+            this.name,
+            this.position.copy(),
+            this.scale,
+            this.points.map(point => point.copy()),
+            this.color.copy().toString()
+        );
+    }
+    
+    lerpAnimation(day: number, t: number) {
+        if (day === this.dayEnd) {
+            if (this.prevStates.length < 3) return
+            // Плавное исчезновение в конце жизненного цикла
+            const lerpBrigade = new DefenceLine(
+                this.name,
+                this.prevStates[day - this.dayStart]!.position.lerp(this.prevStates[day - this.dayStart + 1]!.position, t),
+                this.prevStates[day - this.dayStart]!.scale + (this.prevStates[day - this.dayStart + 1]!.scale - this.prevStates[day - this.dayStart]!.scale) * t,
+                this.points,
+                "red"
+            );
+            const fadedColor = this.color.copy();
+            fadedColor.a = 0;
+            lerpBrigade.color = fadedColor.lerp(this.color, 1 - t);
+            return lerpBrigade;
+        }
+        else if (day === this.dayStart) {
+            // Плавное появления в начале жизненного цикла
+            const lerpBrigade = new DefenceLine(
+                this.name,
+                this.prevStates[1]!.position,
+                this.prevStates[1]!.scale,
+                this.prevStates[1]!.points.map(point => point.copy()),
+                "red"
+            );
+            const fadedColor = this.color.copy();
+            fadedColor.a = 0;
+            lerpBrigade.color = fadedColor.lerp(this.color, t);
+            return lerpBrigade;
+        }
+        else if (day > this.dayStart && day < this.dayEnd) {
+            // Плавная трансформация в середине жизненного цикла
+            const lerpBrigade = new DefenceLine(
+                this.name,
+                this.prevStates[day - this.dayStart]!.position.lerp(this.prevStates[day - this.dayStart + 1]!.position, t),
+                this.prevStates[day - this.dayStart]!.scale + (this.prevStates[day - this.dayStart + 1]!.scale - this.prevStates[day - this.dayStart]!.scale) * t,
+                [
+                    this.prevStates[day - this.dayStart]!.points[0].lerp(this.prevStates[day - this.dayStart + 1]!.points[0], t),
+                    this.prevStates[day - this.dayStart]!.points[1].lerp(this.prevStates[day - this.dayStart + 1]!.points[1], t),
+                    this.prevStates[day - this.dayStart]!.points[2].lerp(this.prevStates[day - this.dayStart + 1]!.points[2], t),
+                    this.prevStates[day - this.dayStart]!.points[3].lerp(this.prevStates[day - this.dayStart + 1]!.points[3], t)
+                ],
+                "red"
+            );
+            lerpBrigade.color = this.prevStates[day - this.dayStart]!.color.lerp(this.prevStates[day - this.dayStart + 1]!.color, t);
+            return lerpBrigade;
+        }
+        else {
+            // Это не наш день
+            return null;
+        }
     }
 }
