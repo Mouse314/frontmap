@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import { initCanvas } from "../engine/main";
-import type Scene from "../engine/state/Scene";
-import type MapObject from "../engine/objects/MapObject";
+import { initCanvas } from "../engine/main.ts";
+import type Scene from "../engine/state/Scene.ts";
+import type MapObject from "../engine/objects/MapObject.ts";
 
 type CenterProps = {
     setScene: (scene: Scene | null) => void;

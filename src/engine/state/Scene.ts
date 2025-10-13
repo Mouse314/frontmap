@@ -1,9 +1,9 @@
-import Animation from "../animation/Animation";
-import TimeManager from "../animation/TimeManager";
-import Point from "../math/Point";
-import Rect from "../math/Rect";
-import Size from "../math/Size";
-import type MapObject from "../objects/MapObject";
+import Animation from "../animation/Animation.ts";
+import TimeManager from "../animation/TimeManager.ts";
+import Point from "../math/Point.ts";
+import Rect from "../math/Rect.ts";
+import Size from "../math/Size.ts";
+import type MapObject from "../objects/MapObject.ts";
 
 export default class Scene {
     public ctx: CanvasRenderingContext2D;
@@ -199,7 +199,7 @@ export default class Scene {
 
                 // Rect Selection
                 for (const object of this.objects) {
-                    if (object.isInsideRectSelection(this, this.selectionRect)) {
+                    if (object.isInsideRectSelection(this.selectionRect)) {
                         object.isEditingMode = true;
                     }
                     else {

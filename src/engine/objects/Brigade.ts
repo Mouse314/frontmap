@@ -1,11 +1,11 @@
-import Color from '../color/Color';
-import { COLOR_GREY, COLOR_GREY_SOFT, COLOR_ORANGE } from '../color/ColorConstants';
-import Point from '../math/Point';
-import type Rect from '../math/Rect';
-import Size from '../math/Size';
-import type Scene from '../state/Scene';
-import type MapObject from './MapObject';
-import type { MapObjectType } from './Types';
+import Color from '../color/Color.ts';
+import { COLOR_GREY, COLOR_GREY_SOFT, COLOR_ORANGE } from '../color/ColorConstants.ts';
+import Point from '../math/Point.ts';
+import type Rect from '../math/Rect.ts';
+import Size from '../math/Size.ts';
+import type Scene from '../state/Scene.ts';
+import type MapObject from './MapObject.ts';
+import type { MapObjectType } from './Types.ts';
 
 export default class Brigade implements MapObject {
     deleted: boolean = false;
@@ -61,7 +61,7 @@ export default class Brigade implements MapObject {
         }
     }
 
-    isInsideRectSelection(scene: Scene, rect: Rect): boolean {
+    isInsideRectSelection(rect: Rect): boolean {
 
         const topLeft = new Point(Math.min(rect.start.x, rect.end.x), Math.min(rect.start.y, rect.end.y));
         const bottomRight = new Point(Math.max(rect.start.x, rect.end.x), Math.max(rect.start.y, rect.end.y));

@@ -1,9 +1,9 @@
 
 
 import { useState } from "react";
-import type MapObject from "../engine/objects/MapObject";
-import type Scene from "../engine/state/Scene";
-import Color from "../engine/color/Color";
+import type MapObject from "../engine/objects/MapObject.ts";
+import type Scene from "../engine/state/Scene.ts";
+import Color from "../engine/color/Color.ts";
 
 type RightSideProps = {
   changeVisible: (visible: boolean) => void;

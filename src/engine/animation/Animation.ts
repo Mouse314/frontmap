@@ -1,6 +1,6 @@
-import Point from "../math/Point";
-import type Scene from "../state/Scene";
-import type TimeManager from "./TimeManager";
+import Point from "../math/Point.ts";
+import type Scene from "../state/Scene.ts";
+import type TimeManager from "./TimeManager.ts";
 
 export default class Animation {
     public animDuration: number = 1000;

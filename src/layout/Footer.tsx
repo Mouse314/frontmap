@@ -1,5 +1,4 @@
-import { use, useEffect, useState } from "react";
-import type Scene from "../engine/state/Scene";
+import type Scene from "../engine/state/Scene.ts";
 import "./style.css";
 
 // TODO: day и totalDays должны приходить из props или контекста

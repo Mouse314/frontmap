@@ -1,7 +1,7 @@
-import Point from "./math/Point";
-import Brigade from "./objects/Brigade";
-import DefenceLine from "./objects/DefenceLine";
-import Scene from "./state/Scene";
+import Point from "./math/Point.ts";
+import Brigade from "./objects/Brigade.ts";
+import DefenceLine from "./objects/DefenceLine.ts";
+import Scene from "./state/Scene.ts";
 
 export function initCanvas(canvas: HTMLCanvasElement) {
     const scene = new Scene(canvas);

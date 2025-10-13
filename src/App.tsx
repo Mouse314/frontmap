@@ -5,8 +5,8 @@ import LeftSide from "./layout/LeftSide";
 import RightSide from "./layout/RightSide";
 
 import './layout/style.css';
-import type Scene from "./engine/state/Scene";
-import type MapObject from "./engine/objects/MapObject";
+import type Scene from "./engine/state/Scene.ts";
+import type MapObject from "./engine/objects/MapObject.ts";
 import Footer from "./layout/Footer";
 
 function App() {

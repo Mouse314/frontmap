@@ -1,8 +1,8 @@
-import type Color from "../color/Color";
-import type Point from "../math/Point";
-import type Rect from "../math/Rect";
-import type Scene from "../state/Scene";
-import type { MapObjectType } from "./Types";
+import type Color from "../color/Color.ts";
+import type Point from "../math/Point.ts";
+import type Rect from "../math/Rect.ts";
+import type Scene from "../state/Scene.ts";
+import type { MapObjectType } from "./Types.ts";
 
 export default interface MapObject {
 
@@ -33,7 +33,7 @@ export default interface MapObject {
 
     // Mouse interaction methods
     isMouseNear: (scene: Scene, mousePos: Point) => boolean;
-    isInsideRectSelection: (scene: Scene, rect: Rect) => boolean;
+    isInsideRectSelection: (rect: Rect) => boolean;
     getNearestPoint?: (scene: Scene, mousePos: Point) => Point | null;
 
     // Animation methods

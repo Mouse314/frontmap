@@ -1,5 +1,5 @@
-import type Scene from "../state/Scene";
-import type Point from "./Point";
+import type Scene from "../state/Scene.ts";
+import type Point from "./Point.ts";
 
 export default class Rect {
     public start: Point;

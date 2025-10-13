@@ -1,8 +1,8 @@
 import { useState } from "react";
-import Brigade from "../engine/objects/Brigade";
-import Point from "../engine/math/Point";
-import DefenceLine from "../engine/objects/DefenceLine";
-import type Scene from "../engine/state/Scene";
+import Brigade from "../engine/objects/Brigade.ts";
+import Point from "../engine/math/Point.ts";
+import DefenceLine from "../engine/objects/DefenceLine.ts";
+import type Scene from "../engine/state/Scene.ts";
 
 type LeftSideProps = {
     changeVisible: (visible: boolean) => void;
