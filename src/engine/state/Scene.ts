@@ -47,7 +47,7 @@ export default class Scene {
 
         // Canvas background image
         const backgroundImage = new Image();
-        backgroundImage.src = '/maps/Kirov-west.png';
+        backgroundImage.src = 'maps/Kirov-west.png';
         backgroundImage.onload = () => {
             this.backgroundImage = backgroundImage;
             this.render();
