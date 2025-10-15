@@ -42,23 +42,28 @@ export default class DefenceLine implements MapObject {
         this.isEditingMode = false;
     }
 
+    // position: Point (lng, lat)
     setPosition(position: Point) {
         this.position = position;
-        this.points[0].setPosition(position.x + 1, position.y + 1);
-        this.points[1].setPosition(position.x + 2, position.y + 2);
-        this.points[2].setPosition(position.x + 3, position.y + 3);
-        this.points[3].setPosition(position.x + 4, position.y + 4);
-        this.directionPoint.setPosition((this.points[0].x + this.points[3].x) / 2, (this.points[0].y + this.points[3].y) / 2);
+        // Optionally, update points relative to new position (lng/lat)
+        // Here, just shift all points by delta
+        const delta = position.subtract(this.points[0]);
+        for (let i = 0; i < this.points.length; i++) {
+            this.points[i] = this.points[i].add(delta);
+        }
+        this.directionPoint = new Point((this.points[0].x + this.points[3].x) / 2, (this.points[0].y + this.points[3].y) / 2);
     }
 
+    // delta: Point (lng, lat)
     translate(delta: Point, currentPoint: Point | null = null) {
         if (currentPoint) {
             currentPoint.translate(delta);
-        }
-        else {
-            for (const point of [...this.points, this.directionPoint]) {
-                point.translate(delta);
+        } else {
+            for (let i = 0; i < this.points.length; i++) {
+                this.points[i] = this.points[i].add(delta);
             }
+            this.position = this.position.add(delta);
+            this.directionPoint = new Point((this.points[0].x + this.points[3].x) / 2, (this.points[0].y + this.points[3].y) / 2);
         }
     }
 
@@ -83,72 +88,68 @@ export default class DefenceLine implements MapObject {
     }
 
     isMouseNear(scene: Scene, mousePos: Point): boolean {
-
+        // Используем lngLatToScreen для точного сравнения, как в Brigade
         for (const point of [...this.points, this.directionPoint]) {
-            const screenPoint = scene.worldToScreen(point);
-            if (Math.abs(screenPoint.x - mousePos.x) < 10 && Math.abs(screenPoint.y - mousePos.y) < 10) {
-                // Mouse is near this point
+            const screenPoint = scene.lngLatToScreen(point.x, point.y);
+            if (
+                Math.abs(screenPoint.x - mousePos.x) < 10 &&
+                Math.abs(screenPoint.y - mousePos.y) < 10
+            ) {
                 return true;
             }
         }
-
         return false;
     }
 
     getNearestPoint(scene: Scene, mousePos: Point): Point | null {
         for (const point of [...this.points, this.directionPoint]) {
-            const screenPoint = scene.worldToScreen(point);
-            if (Math.abs(screenPoint.x - mousePos.x) < 10 && Math.abs(screenPoint.y - mousePos.y) < 10) {
-                // Mouse is near this point
+            const screenPoint = scene.lngLatToScreen(point.x, point.y);
+            if (
+                Math.abs(screenPoint.x - mousePos.x) < 10 &&
+                Math.abs(screenPoint.y - mousePos.y) < 10
+            ) {
                 return point;
             }
         }
-
         return null;
     }
 
-    isInsideRectSelection(rect: Rect): boolean {
+    isInsideRectSelection(scene: Scene, rect: Rect): boolean {
+        // rect.start/end — world (lng/lat), выделение по экрану
+        const screenStart = scene.lngLatToScreen(rect.start.x, rect.start.y);
+        const screenEnd = scene.lngLatToScreen(rect.end.x, rect.end.y);
+        const minX = Math.min(screenStart.x, screenEnd.x);
+        const maxX = Math.max(screenStart.x, screenEnd.x);
+        const minY = Math.min(screenStart.y, screenEnd.y);
+        const maxY = Math.max(screenStart.y, screenEnd.y);
 
-        const topLeft = new Point(Math.min(rect.start.x, rect.end.x), Math.min(rect.start.y, rect.end.y));
-        const bottomRight = new Point(Math.max(rect.start.x, rect.end.x), Math.max(rect.start.y, rect.end.y));
-
-        if (this.points[0].x >= topLeft.x && this.points[0].x <= bottomRight.x && this.points[0].y >= topLeft.y && this.points[0].y <= bottomRight.y &&
-            this.points[3].x >= topLeft.x && this.points[3].x <= bottomRight.x && this.points[3].y >= topLeft.y && this.points[3].y <= bottomRight.y
-        ) {
-            return true;
-        }
-
-        return false;
+        // Проверяем, что все ключевые точки линии попадают в экранный прямоугольник выделения
+        const screenPoints = [this.points[0], this.points[3]].map(p => scene.lngLatToScreen(p.x, p.y));
+        return screenPoints.every(sp => sp.x >= minX && sp.x <= maxX && sp.y >= minY && sp.y <= maxY);
     }
 
     draw(scene: Scene) {
         const ctx = scene.ctx;
         ctx.save();
-        const screenPoints = this.points.map(point => scene.worldToScreen(point));
-        // const screenSize = scene.worldSizeToScreen(this.calculateScreenScale(scene));
-
+        // Используем lngLatToScreen для всех точек
+        const screenPoints = this.points.map(point => scene.lngLatToScreen(point.x, point.y));
         const mixColor = this.isEditingMode ? "orange" : this.color.lerp(COLOR_GREY, this.gray);
-
         ctx.fillStyle = mixColor.toString();
         ctx.strokeStyle = mixColor.toString();
         ctx.lineCap = "round";
-
         // Draw curve
         ctx.lineWidth = this.scale * 2;
         ctx.beginPath();
         ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
         ctx.bezierCurveTo(screenPoints[1].x, screenPoints[1].y, screenPoints[2].x, screenPoints[2].y, screenPoints[3].x, screenPoints[3].y);
         ctx.stroke();
-
         ctx.beginPath();
-
         // Draw spikes with fixed spacing
         if (this.isSpiked) {
             const p1 = this.points[0];
             const p2 = this.points[3];
             const p3 = this.directionPoint;
             const cross = (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
-
             const spikeSpacing = 15 + this.scale * 3; // px between spikes
             const spikeLength = 5 + this.scale * 2; // px spike length
             // Approximate curve length
@@ -180,9 +181,7 @@ export default class DefenceLine implements MapObject {
                 ctx.stroke();
             }
         }
-
-        const screenDirectionPoint = scene.worldToScreen(this.directionPoint);
-
+        const screenDirectionPoint = scene.lngLatToScreen(this.directionPoint.x, this.directionPoint.y);
         // Draw points
         if (this.isEditingMode) {
             ctx.fillStyle = "purple";
@@ -196,7 +195,6 @@ export default class DefenceLine implements MapObject {
             ctx.arc(screenDirectionPoint.x, screenDirectionPoint.y, 5, 0, Math.PI * 2);
             ctx.fill();
         }
-
         ctx.restore();
     }
 

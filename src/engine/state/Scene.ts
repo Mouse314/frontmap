@@ -1,11 +1,102 @@
 import Animation from "../animation/Animation.ts";
 import TimeManager from "../animation/TimeManager.ts";
+import MapController from "../GIS/MapController.ts";
 import Point from "../math/Point.ts";
 import Rect from "../math/Rect.ts";
 import Size from "../math/Size.ts";
 import type MapObject from "../objects/MapObject.ts";
 
 export default class Scene {
+    /**
+     * Преобразует мировые координаты (x, y в проекции Меркатора) в географические (lng, lat)
+     * @param world Point (x, y) в проекции Меркатора
+     * @returns Point (lng, lat) в градусах
+     */
+    public worldToLngLat(world: Point): Point {
+        // OSM/Leaflet: x = (lng + 180) / 360 * worldSize
+        //              y = (1 - ln(tan(latRad) + sec(latRad)) / π) / 2 * worldSize
+        // Обратные формулы:
+        const worldSize = 256 * Math.pow(2, this.mapController.zoom);
+        const lng = (world.x / worldSize) * 360 - 180;
+        const n = Math.PI - 2 * Math.PI * world.y / worldSize;
+        const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+        return new Point(lng, lat);
+    }
+    /**
+     * Преобразует экранные координаты (x, y) в географические (lng, lat)
+     * @param point Point (x, y) в пикселях
+     * @returns Point (lng, lat) в градусах
+     */
+    public screenToLngLat(point: Point): Point {
+        // Прямое преобразование экранных координат (x, y) в lng/lat через Web Mercator
+        // 1. Получаем смещение в пикселях от центра canvas
+        const cx = this.canvas.width / 2;
+        const cy = this.canvas.height / 2;
+        const dx = point.x - cx;
+        const dy = point.y - cy;
+
+        // 2. Переводим смещение в тайлы
+        const zoom = this.mapController.zoom;
+        const tileSize = 256;
+        const n = Math.pow(2, zoom);
+        // center lng/lat -> center tileX/tileY
+        const centerTileX = (this.offsetX + 180) / 360 * n;
+        const centerLatRad = this.offsetY * Math.PI / 180;
+        const centerTileY = (1 - Math.log(Math.tan(Math.PI / 4 + centerLatRad / 2)) / Math.PI) / 2 * n;
+
+        // 3. Смещение в тайлах
+        const deltaTileX = dx / tileSize;
+        const deltaTileY = dy / tileSize;
+
+        // 4. Итоговые tileX/tileY
+        const tileX = centerTileX + deltaTileX;
+        const tileY = centerTileY + deltaTileY;
+
+        // 5. tileX/tileY -> lng/lat
+        const lng = tileX / n * 360 - 180;
+        const latRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * tileY / n)));
+        const lat = latRad * 180 / Math.PI;
+        return new Point(lng, lat);
+    }
+    /**
+     * Преобразует разницу в экранных координатах (dx, dy в пикселях) в географическую разницу (lng, lat)
+     * @param delta Point (dx, dy) в пикселях
+     * @returns Point (dLng, dLat) в градусах
+     */
+    public screenDeltaToLngLat(delta: Point): Point {
+        // Берём центр карты как точку отсчёта
+        const centerScreen = new Point(this.canvas.width / 2, this.canvas.height / 2);
+        const worldBefore = this.screenToWorld(centerScreen);
+        const worldAfter = this.screenToWorld(centerScreen.add(delta));
+        return worldAfter.subtract(worldBefore);
+    }
+    /**
+     * Преобразует координаты lng/lat (WGS84) в экранные координаты относительно карты (Web Mercator)
+     * @param lng долгота
+     * @param lat широта
+     * @returns Point (x, y) на canvas
+     */
+    public lngLatToScreen(lng: number, lat: number): Point {
+        // OSM/Leaflet tile math
+        const zoom = this.mapController.zoom;
+        const tileSize = 256;
+        const n = Math.pow(2, zoom);
+        // 1. lng/lat -> tileX/tileY (float)
+        const tileX = (lng + 180) / 360 * n;
+        const latRad = lat * Math.PI / 180;
+        const tileY = (1 - Math.log(Math.tan(Math.PI / 4 + latRad / 2)) / Math.PI) / 2 * n;
+        // 2. center lng/lat -> center tileX/tileY
+        const centerTileX = (this.offsetX + 180) / 360 * n;
+        const centerLatRad = this.offsetY * Math.PI / 180;
+        const centerTileY = (1 - Math.log(Math.tan(Math.PI / 4 + centerLatRad / 2)) / Math.PI) / 2 * n;
+        // 3. Смещение в пикселях от центра карты
+        const dx = (tileX - centerTileX) * tileSize;
+        const dy = (tileY - centerTileY) * tileSize;
+        // 4. Центр canvas
+        const cx = this.canvas.width / 2;
+        const cy = this.canvas.height / 2;
+        return new Point(cx + dx, cy + dy);
+    }
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
 
@@ -37,40 +128,47 @@ export default class Scene {
     public timeManager: TimeManager;
     public day: number = 0;
 
+    // GIS
+    public mapController: MapController;
+
     constructor(canvas: HTMLCanvasElement) {
 
         // Canvas init
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+        this.ctx.imageSmoothingEnabled = false;
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // Canvas background image
-        const backgroundImage = new Image();
-        backgroundImage.src = 'maps/Kirov-west.png';
-        backgroundImage.onload = () => {
-            this.backgroundImage = backgroundImage;
-            this.render();
-        };
 
         // Projection variables
-        this.offsetX = 0;
-        this.offsetY = 0;
-        this.scale = 50;
+        // offsetX/offsetY: центр карты в градусах (долгота/широта)
+        this.offsetX = 37.618423; // Москва по умолчанию
+        this.offsetY = 55.751244;
+        this.mapController = new MapController(this);
+        this.scale = this.calcScale(this.mapController.zoom); // px per degree
 
+
+        // (перенесено выше)
+
+
+        // Canvas background image
         this.lastMousePos = new Point(0, 0);
-
         this.timeManager = new TimeManager('days');
         this.animationController = new Animation(this.timeManager);
-
         this.canvas.addEventListener("mousedown", (event) => this.onMouseDown(event));
         this.canvas.addEventListener("mouseup", (event) => this.onMouseUp(event));
         this.canvas.addEventListener("mousemove", (event) => this.onMouseMove(event));
         this.canvas.addEventListener("contextmenu", (event) => this.onContextMenu(event));
         this.canvas.addEventListener("wheel", (event) => this.onMouseWheel(event));
-
         window.addEventListener("keydown", (event) => this.onKeyDown(event));
         window.addEventListener("keyup", (event) => this.onKeyUp(event));
+    }
+
+    // Пересчитываем масштаб (px per degree) для текущего zoom
+    public calcScale(zoom: number): number {
+        // TILE_SIZE * 2^zoom / 360 (градусов на весь мир)
+        return 256 * Math.pow(2, zoom) / 360;
     }
 
     public setObjects(objects: MapObject[]) {
@@ -89,16 +187,22 @@ export default class Scene {
     }
 
     public worldToScreen(point: Point): Point {
+        // point.x = lng, point.y = lat
+        // X: линейно, Y: инверсия (север вверх)
+        const width = this.canvas.width;
+        const height = this.canvas.height;
         return new Point(
-            (point.x - this.offsetX) * this.scale,
-            (point.y - this.offsetY) * this.scale
+            (point.x - this.offsetX) * this.scale + width / 2,
+            (this.offsetY - point.y) * this.scale + height / 2
         );
     }
 
     public screenToWorld(point: Point): Point {
+        const width = this.canvas.width;
+        const height = this.canvas.height;
         return new Point(
-            point.x / this.scale + this.offsetX,
-            point.y / this.scale + this.offsetY
+            (point.x - width / 2) / this.scale + this.offsetX,
+            this.offsetY - (point.y - height / 2) / this.scale
         );
     }
 
@@ -110,17 +214,17 @@ export default class Scene {
     }
 
     public screenDeltaToWorld(delta: Point): Point {
-        return new Point(delta.x / this.scale, delta.y / this.scale);
+        return new Point(delta.x / this.scale, -delta.y / this.scale);
     }
 
     public isMouseAnyNear = false;
     public defenceLineNearestPoint: Point | null = null;
-    private onMouseDown(event: MouseEvent) {
+    public onMouseDown(event: MouseEvent) {
         this.isMouseDown = true;
         this.lastMousePos = this.getMousePos(event);
         this.prevMousePos = this.lastMousePos;
         this.mouseDownPos = this.lastMousePos;
-        const worldMouseDownPos = this.screenToWorld(this.mouseDownPos);
+        const worldMouseDownPos = this.screenToLngLat(this.mouseDownPos);
 
         if (event.button === 2) {
             this.selectedObjects = [];
@@ -136,7 +240,7 @@ export default class Scene {
             }
         }
     }
-    private onMouseUp(event: MouseEvent) {
+    public onMouseUp(event: MouseEvent) {
         this.isMouseDown = false;
         this.isPanning = false;
         this.isMouseAnyNear = false;
@@ -187,19 +291,19 @@ export default class Scene {
 
         this.render();
     }
-    private onMouseMove(event: MouseEvent) {
+    public onMouseMove(event: MouseEvent) {
         const mousePos = this.getMousePos(event);
-        const worldMousePos = this.screenToWorld(mousePos);
-        const mouseDelta = mousePos.subtract(this.prevMousePos);
-        const worldMouseDelta = this.screenDeltaToWorld(mouseDelta);
+        const geoPos = this.screenToLngLat(mousePos);
+        const prevGeoPos = this.screenToLngLat(this.prevMousePos);
+        const geoMouseDelta = geoPos.subtract(prevGeoPos);
 
         if (this.isMouseDown) {
             if (this.selectionRect) {
-                this.selectionRect.end = worldMousePos;
+                this.selectionRect.end = geoPos;
 
                 // Rect Selection
                 for (const object of this.objects) {
-                    if (object.isInsideRectSelection(this.selectionRect)) {
+                    if (object.isInsideRectSelection(this, this.selectionRect)) {
                         object.isEditingMode = true;
                     }
                     else {
@@ -220,15 +324,15 @@ export default class Scene {
                 if (this.isMouseAnyNear) {
                     this.selectedObjects.forEach(object => {
                         if (object.type === 'Brigade') {
-                            object.translate(worldMouseDelta);
+                            object.translate(geoMouseDelta);
                         }
                         else if (object.type === 'DefenceLine') {
                             if (this.selectedObjects.length > 1 || this.isShifting) {
-                                object.translate(worldMouseDelta);
+                                object.translate(geoMouseDelta);
                             }
                             else {
                                 if (this.defenceLineNearestPoint) {
-                                    object.translate(worldMouseDelta, this.defenceLineNearestPoint);
+                                    object.translate(geoMouseDelta, this.defenceLineNearestPoint);
                                 }
                             }
                         }
@@ -256,20 +360,52 @@ export default class Scene {
 
             this.isPanning = true;
 
-            // Pan the view
-            const dx = (mousePos.x - this.lastMousePos.x) / this.scale;
-            const dy = (mousePos.y - this.lastMousePos.y) / this.scale;
-            this.offsetX -= dx;
-            this.offsetY -= dy;
-
+            // Pan the view (Web Mercator correct vertical)
+            // Горизонталь: lng — линейно, вертикаль: lat — через обратную Web Mercator
+            const dx = mousePos.x - this.lastMousePos.x;
+            const dy = -(mousePos.y - this.lastMousePos.y); // инверсия для экранных координат
+            const zoom = this.mapController.zoom;
+            const lngPerPx = 360 / (256 * Math.pow(2, zoom));
+            const deltaLng = -dx * lngPerPx;
+            // Y через меркатор
+            const centerLatBefore = this.offsetY;
+            const n = Math.pow(2, zoom);
+            const latRadBefore = centerLatBefore * Math.PI / 180;
+            const mercatorY = Math.log(Math.tan(Math.PI / 4 + latRadBefore / 2));
+            const centerTileY = (1 - mercatorY / Math.PI) / 2 * n;
+            const pxPerTile = 256;
+            const centerTileYPx = centerTileY * pxPerTile;
+            const newTileYPx = centerTileYPx + dy;
+            const newTileY = newTileYPx / pxPerTile;
+            const latRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * newTileY / n)));
+            const deltaLat = latRad * 180 / Math.PI - centerLatBefore;
+            this.offsetX += deltaLng;
+            this.offsetY += deltaLat;
+            // Перемещаем все выбранные объекты на тот же world-delta
+            if (this.selectedObjects.length > 0) {
+                const worldDelta = new Point(deltaLng, deltaLat);
+                this.selectedObjects.forEach(object => {
+                    if (object.type === 'Brigade') {
+                        object.translate(worldDelta);
+                    } else if (object.type === 'DefenceLine') {
+                        if (this.selectedObjects.length > 1 || this.isShifting) {
+                            object.translate(worldDelta);
+                        } else {
+                            if (this.defenceLineNearestPoint) {
+                                object.translate(worldDelta, this.defenceLineNearestPoint);
+                            }
+                        }
+                    }
+                });
+            }
             this.lastMousePos = mousePos;
-
+            this.mapController.updateMap();
             this.render();
             this.prevMousePos = mousePos;
         }
         else {
             if (this.addingObject) {
-                this.addingObject.setPosition(worldMousePos);
+                this.addingObject.setPosition(geoPos);
                 this.addingObject.dayStart = this.day;
                 this.addingObject.dayEnd = this.day;
                 this.render();
@@ -278,11 +414,11 @@ export default class Scene {
 
         this.lastMousePos = mousePos;
     }
-    private onContextMenu(event: MouseEvent) {
+    public onContextMenu(event: MouseEvent) {
         event.preventDefault();
     }
 
-    private onMouseWheel(event: WheelEvent) {
+    public onMouseWheel(event: WheelEvent) {
         event.preventDefault();
         // Передаём координаты курсора относительно canvas
         const { x, y } = this.getMousePos(event);
@@ -292,7 +428,7 @@ export default class Scene {
 
     // KEYBOARD EVENTS
 
-    private onKeyDown(event: KeyboardEvent) {
+    public onKeyDown(event: KeyboardEvent) {
         if (event.key === 'Shift') {
             this.isShifting = true;
         }
@@ -304,7 +440,7 @@ export default class Scene {
             this.render();
         }
     }
-    private onKeyUp(event: KeyboardEvent) {
+    public onKeyUp(event: KeyboardEvent) {
         if (event.key === 'Shift') {
             this.isShifting = false;
         }
@@ -316,20 +452,28 @@ export default class Scene {
     private zoomCursorScreen: { x: number; y: number } | null = null;
 
     private zoom(wheelDelta: number, cursorX?: number, cursorY?: number) {
-        const zoomFactor = 0.01;
-        const minScale = 10;
-        const maxScale = 100;
-        // Если переданы координаты курсора, сохраняем их
+        // Зум относительно курсора: world-координаты под курсором должны остаться на месте
+        let cursorWorld: Point | null = null;
         if (typeof cursorX === "number" && typeof cursorY === "number") {
-            this.zoomCursorScreen = { x: cursorX, y: cursorY };
-            this.zoomCursorWorld = this.screenToWorld(new Point(cursorX, cursorY));
-        } else {
-            this.zoomCursorScreen = null;
-            this.zoomCursorWorld = null;
+            cursorWorld = this.screenToWorld(new Point(cursorX, cursorY));
         }
-        // Задаём целевой масштаб
-        const target = Math.min(Math.max(this.scale + (-wheelDelta) * zoomFactor, minScale), maxScale);
-        this.startSmoothZoom(target);
+        // wheelDelta < 0 — увеличиваем зум, > 0 — уменьшаем
+        let newZoom = this.mapController.zoom + (wheelDelta < 0 ? 1 : -1);
+        newZoom = Math.max(1, Math.min(19, newZoom));
+        if (newZoom === this.mapController.zoom) return;
+        // Пересчитать масштаб
+        const oldScale = this.scale;
+        this.mapController.zoom = newZoom;
+        this.scale = this.calcScale(newZoom);
+        // Корректируем offsetX/offsetY так, чтобы world под курсором не сдвинулся
+        if (cursorWorld && typeof cursorX === "number" && typeof cursorY === "number") {
+            // Новые world-координаты под курсором после смены масштаба
+            const newWorld = this.screenToWorld(new Point(cursorX, cursorY));
+            this.offsetX += cursorWorld.x - newWorld.x;
+            this.offsetY += cursorWorld.y - newWorld.y;
+        }
+        this.mapController.updateMap();
+        this.render();
     }
 
     private startSmoothZoom(target: number) {
@@ -392,21 +536,29 @@ export default class Scene {
         if (this.backgroundImage) {
             // Левый верх мира в экранных координатах
             const topLeft = this.worldToScreen(new Point(0, 0));
-            const width = this.backgroundImage.width * this.scale / 25;
-            const height = this.backgroundImage.height * this.scale / 25;
+            const width = this.backgroundImage.width * this.scale / 50;
+            const height = this.backgroundImage.height * this.scale / 50;
             this.ctx.drawImage(this.backgroundImage, topLeft.x, topLeft.y, width, height);
         }
+        // Отрисовка карты (тайлов OSM)
+        this.mapController.drawTiles(this.ctx);
 
         // Отрисовка объектов
         for (const object of this.objects) {
             if (object.deleted) continue;
             if (this.day >= object.dayStart && this.day <= object.dayEnd) {
+                // Получаем экранные координаты через lngLatToScreen
+                // const screenPos = this.lngLatToScreen(object.position.x, object.position.y);
+                // Можно передать screenPos в draw, либо нарисовать здесь
+                // Для совместимости: object.draw(this, screenPos)
+                // Для текущей архитектуры: используем object.draw(this), а внутри draw используем lngLatToScreen
                 object.prevStates[this.day - object.dayStart + 1]?.draw(this);
             }
         }
 
         // Отрисовка добавляемого объекта
         if (this.addingObject) {
+            // const screenPos = this.lngLatToScreen(this.addingObject.position.x, this.addingObject.position.y);
             this.addingObject.draw(this);
         }
 
@@ -414,6 +566,7 @@ export default class Scene {
         if (this.selectionRect) {
             this.selectionRect.draw(this);
         }
+
 
         // Обновление Реакт окружения
         for (const object of this.objects) {
