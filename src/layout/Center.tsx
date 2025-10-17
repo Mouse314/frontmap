@@ -3,7 +3,6 @@ import { useEffect, useRef } from "react";
 import { initCanvas } from "../engine/main.ts";
 import type Scene from "../engine/state/Scene.ts";
 import type MapObject from "../engine/objects/MapObject.ts";
-import LeafletMap from "../engine/GIS/Leaflet";
 
 type CenterProps = {
     setScene: (scene: Scene | null) => void;
@@ -59,9 +58,11 @@ export default function Center({ setScene, setSelectedObjects }: CenterProps) {
     // }, [sceneRef.current]);
 
     return (
-        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-            {/* <LeafletMap /> */}
-            <canvas id="map" ref={canvasRef} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1, pointerEvents: 'all', background: 'black' }}></canvas>
-        </div>
+        <>
+            <div style={{ position: 'relative', width: '100%', height: '100%', zIndex: -1 }}>
+                {/* <LeafletMap /> */}
+            </div>
+            <canvas id="map" ref={canvasRef} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 0, pointerEvents: 'all', background: 'black' }}></canvas>
+        </>
     );
 }

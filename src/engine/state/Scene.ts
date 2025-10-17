@@ -59,18 +59,6 @@ export default class Scene {
         return new Point(lng, lat);
     }
     /**
-     * Преобразует разницу в экранных координатах (dx, dy в пикселях) в географическую разницу (lng, lat)
-     * @param delta Point (dx, dy) в пикселях
-     * @returns Point (dLng, dLat) в градусах
-     */
-    public screenDeltaToLngLat(delta: Point): Point {
-        // Берём центр карты как точку отсчёта
-        const centerScreen = new Point(this.canvas.width / 2, this.canvas.height / 2);
-        const worldBefore = this.screenToWorld(centerScreen);
-        const worldAfter = this.screenToWorld(centerScreen.add(delta));
-        return worldAfter.subtract(worldBefore);
-    }
-    /**
      * Преобразует координаты lng/lat (WGS84) в экранные координаты относительно карты (Web Mercator)
      * @param lng долгота
      * @param lat широта
@@ -149,7 +137,7 @@ export default class Scene {
         this.scale = this.calcScale(this.mapController.zoom); // px per degree
 
 
-        // (перенесено выше)
+        this.render();
 
 
         // Canvas background image
@@ -239,6 +227,8 @@ export default class Scene {
                 return;
             }
         }
+
+        this.selectedObjects = [];
     }
     public onMouseUp(event: MouseEvent) {
         this.isMouseDown = false;
@@ -446,29 +436,28 @@ export default class Scene {
         }
     }
 
-    private zoomTarget: number | null = null;
-    private zoomAnimationFrame: number | null = null;
-    private zoomCursorWorld: Point | null = null;
-    private zoomCursorScreen: { x: number; y: number } | null = null;
+    // private zoomTarget: number | null = null;
+    // private zoomAnimationFrame: number | null = null;
+    // private zoomCursorWorld: Point | null = null;
+    // private zoomCursorScreen: { x: number; y: number } | null = null;
 
     private zoom(wheelDelta: number, cursorX?: number, cursorY?: number) {
         // Зум относительно курсора: world-координаты под курсором должны остаться на месте
         let cursorWorld: Point | null = null;
         if (typeof cursorX === "number" && typeof cursorY === "number") {
-            cursorWorld = this.screenToWorld(new Point(cursorX, cursorY));
+            cursorWorld = this.screenToLngLat(new Point(cursorX, cursorY));
         }
         // wheelDelta < 0 — увеличиваем зум, > 0 — уменьшаем
         let newZoom = this.mapController.zoom + (wheelDelta < 0 ? 1 : -1);
         newZoom = Math.max(1, Math.min(19, newZoom));
         if (newZoom === this.mapController.zoom) return;
         // Пересчитать масштаб
-        const oldScale = this.scale;
         this.mapController.zoom = newZoom;
         this.scale = this.calcScale(newZoom);
         // Корректируем offsetX/offsetY так, чтобы world под курсором не сдвинулся
         if (cursorWorld && typeof cursorX === "number" && typeof cursorY === "number") {
             // Новые world-координаты под курсором после смены масштаба
-            const newWorld = this.screenToWorld(new Point(cursorX, cursorY));
+            const newWorld = this.screenToLngLat(new Point(cursorX, cursorY));
             this.offsetX += cursorWorld.x - newWorld.x;
             this.offsetY += cursorWorld.y - newWorld.y;
         }
@@ -476,42 +465,42 @@ export default class Scene {
         this.render();
     }
 
-    private startSmoothZoom(target: number) {
-        if (this.zoomAnimationFrame !== null) {
-            cancelAnimationFrame(this.zoomAnimationFrame);
-        }
-        this.zoomTarget = target;
-        this.animateZoom();
-    }
+    // private startSmoothZoom(target: number) {
+    //     if (this.zoomAnimationFrame !== null) {
+    //         cancelAnimationFrame(this.zoomAnimationFrame);
+    //     }
+    //     this.zoomTarget = target;
+    //     this.animateZoom();
+    // }
 
-    private animateZoom() {
-        if (this.zoomTarget === null) return;
-        const speed = 0.15; // Чем меньше, тем плавнее
-        const diff = this.zoomTarget - this.scale;
-        if (Math.abs(diff) < 0.001) {
-            // Финальный шаг: скорректировать offsetX/offsetY для зума к курсору
-            if (this.zoomCursorWorld && this.zoomCursorScreen) {
-                const newWorld = this.screenToWorld(new Point(this.zoomCursorScreen.x, this.zoomCursorScreen.y));
-                this.offsetX += this.zoomCursorWorld.x - newWorld.x;
-                this.offsetY += this.zoomCursorWorld.y - newWorld.y;
-            }
-            this.scale = this.zoomTarget;
-            this.zoomTarget = null;
-            this.zoomCursorWorld = null;
-            this.zoomCursorScreen = null;
-            this.render();
-            return;
-        }
-        this.scale += diff * speed;
-        // Корректируем offsetX/offsetY на каждом шаге для плавности
-        if (this.zoomCursorWorld && this.zoomCursorScreen) {
-            const newWorld = this.screenToWorld(new Point(this.zoomCursorScreen.x, this.zoomCursorScreen.y));
-            this.offsetX += this.zoomCursorWorld.x - newWorld.x;
-            this.offsetY += this.zoomCursorWorld.y - newWorld.y;
-        }
-        this.render();
-        this.zoomAnimationFrame = requestAnimationFrame(() => this.animateZoom());
-    }
+    // private animateZoom() {
+    //     if (this.zoomTarget === null) return;
+    //     const speed = 0.15; // Чем меньше, тем плавнее
+    //     const diff = this.zoomTarget - this.scale;
+    //     if (Math.abs(diff) < 0.001) {
+    //         // Финальный шаг: скорректировать offsetX/offsetY для зума к курсору
+    //         if (this.zoomCursorWorld && this.zoomCursorScreen) {
+    //             const newWorld = this.screenToWorld(new Point(this.zoomCursorScreen.x, this.zoomCursorScreen.y));
+    //             this.offsetX += this.zoomCursorWorld.x - newWorld.x;
+    //             this.offsetY += this.zoomCursorWorld.y - newWorld.y;
+    //         }
+    //         this.scale = this.zoomTarget;
+    //         this.zoomTarget = null;
+    //         this.zoomCursorWorld = null;
+    //         this.zoomCursorScreen = null;
+    //         this.render();
+    //         return;
+    //     }
+    //     this.scale += diff * speed;
+    //     // Корректируем offsetX/offsetY на каждом шаге для плавности
+    //     if (this.zoomCursorWorld && this.zoomCursorScreen) {
+    //         const newWorld = this.screenToWorld(new Point(this.zoomCursorScreen.x, this.zoomCursorScreen.y));
+    //         this.offsetX += this.zoomCursorWorld.x - newWorld.x;
+    //         this.offsetY += this.zoomCursorWorld.y - newWorld.y;
+    //     }
+    //     this.render();
+    //     // this.zoomAnimationFrame = requestAnimationFrame(() => this.animateZoom());
+    // }
 
     public addNewDay() {
         this.timeManager.rangeLen++;
@@ -547,11 +536,6 @@ export default class Scene {
         for (const object of this.objects) {
             if (object.deleted) continue;
             if (this.day >= object.dayStart && this.day <= object.dayEnd) {
-                // Получаем экранные координаты через lngLatToScreen
-                // const screenPos = this.lngLatToScreen(object.position.x, object.position.y);
-                // Можно передать screenPos в draw, либо нарисовать здесь
-                // Для совместимости: object.draw(this, screenPos)
-                // Для текущей архитектуры: используем object.draw(this), а внутри draw используем lngLatToScreen
                 object.prevStates[this.day - object.dayStart + 1]?.draw(this);
             }
         }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type MapObject from "../engine/objects/MapObject.ts";
 import type Scene from "../engine/state/Scene.ts";
 import Color from "../engine/color/Color.ts";
+import type { CorpsType } from "../engine/objects/Types.ts";
 
 type RightSideProps = {
   changeVisible: (visible: boolean) => void;
@@ -41,6 +42,11 @@ export default function RightSide({ changeVisible, selectedObjects, scene }: Rig
     scene?.render();
   };
 
+  const handleGroupCorpsType = (arr: any[], value: CorpsType) => {
+    arr.forEach(obj => { obj.corpsType = value; });
+    scene?.render();
+  };
+
   return (
     <aside style={{ overflow: !isVisible ? 'scroll' : undefined }} className="right-side">
       <div className="show-hide-right-block">
@@ -65,6 +71,18 @@ export default function RightSide({ changeVisible, selectedObjects, scene }: Rig
                 style={{ width: 60 }}
                 onChange={e => handleGroupScale(brigades, parseFloat(e.target.value))}
               />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+              <label style={{ fontSize: 13 }}>Тип войск:</label>
+              <select
+                value={getGroupValue(brigades, 'corpsType', 'Infantry')}
+                onChange={e => handleGroupCorpsType(brigades, e.target.value as CorpsType)}
+                style={{ fontSize: 14 }}
+              >
+                <option value="Infantry">Пехота</option>
+                <option value="Cavalry">Кавалерия</option>
+                <option value="Tank">Танки</option>
+              </select>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
               <label style={{ fontSize: 13 }}>Цвет:</label>

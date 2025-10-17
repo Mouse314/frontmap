@@ -4,7 +4,7 @@ import type Scene from "../state/Scene";
 
 const TILE_SIZE = 256;
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-const TILE_URL1 = "https://c.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png";
+// const TILE_URL = "https://c.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png";
 
 export default class MapController {
     public scene: Scene;
@@ -17,7 +17,7 @@ export default class MapController {
     }
 
     public getTileUrl(z: number, x: number, y: number): string {
-        return TILE_URL1.replace("{z}", z.toString()).replace("{x}", x.toString()).replace("{y}", y.toString());
+        return TILE_URL.replace("{z}", z.toString()).replace("{x}", x.toString()).replace("{y}", y.toString());
     }
 
     // Convert world coordinates to lat/lng (Web Mercator)
@@ -101,7 +101,7 @@ export default class MapController {
         const centerScreen = new Point(width / 2, height / 2);
         const centerWorld = this.scene.screenToWorld(centerScreen);
         // Convert center lat/lng to tile fractional coordinates
-        const scale = Math.pow(2, z);
+        // const scale = Math.pow(2, z);
         const latRad = centerWorld.y * Math.PI / 180;
         const n = Math.pow(2, z);
         const centerTileX = (centerWorld.x + 180) / 360 * n;

@@ -150,6 +150,7 @@ export default class DefenceLine implements MapObject {
             const p2 = this.points[3];
             const p3 = this.directionPoint;
             const cross = (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
+            console.log("Cross product:", cross);
             const spikeSpacing = 15 + this.scale * 3; // px between spikes
             const spikeLength = 5 + this.scale * 2; // px spike length
             // Approximate curve length
@@ -177,7 +178,7 @@ export default class DefenceLine implements MapObject {
                 }
                 ctx.beginPath();
                 ctx.moveTo(point.x, point.y);
-                ctx.lineTo(point.x + (cross > 0 ? perp.x : -perp.x) * spikeLength, point.y + (cross > 0 ? perp.y : -perp.y) * spikeLength);
+                ctx.lineTo(point.x + (cross < 0 ? perp.x : -perp.x) * spikeLength, point.y + (cross < 0 ? perp.y : -perp.y) * spikeLength);
                 ctx.stroke();
             }
         }
@@ -199,13 +200,16 @@ export default class DefenceLine implements MapObject {
     }
 
     public clone(): MapObject {
-        return new DefenceLine(
+        const newDefenceLine = new DefenceLine(
             this.name,
             this.position.copy(),
             this.scale,
             this.points.map(point => point.copy()),
             this.color.copy().toString()
         );
+        newDefenceLine.isSpiked = this.isSpiked;
+        newDefenceLine.directionPoint = this.directionPoint.copy();
+        return newDefenceLine;
     }
     
     lerpAnimation(day: number, t: number) {
@@ -219,6 +223,8 @@ export default class DefenceLine implements MapObject {
                 this.points,
                 "red"
             );
+            lerpBrigade.isSpiked = this.prevStates[day - this.dayStart]!.isSpiked;
+            lerpBrigade.directionPoint = this.prevStates[day - this.dayStart]!.directionPoint.copy();
             const fadedColor = this.color.copy();
             fadedColor.a = 0;
             lerpBrigade.color = fadedColor.lerp(this.color, 1 - t);
@@ -233,6 +239,8 @@ export default class DefenceLine implements MapObject {
                 this.prevStates[1]!.points.map(point => point.copy()),
                 "red"
             );
+            lerpBrigade.isSpiked = this.prevStates[1]!.isSpiked;
+            lerpBrigade.directionPoint = this.prevStates[1]!.directionPoint.copy();
             const fadedColor = this.color.copy();
             fadedColor.a = 0;
             lerpBrigade.color = fadedColor.lerp(this.color, t);
@@ -252,6 +260,8 @@ export default class DefenceLine implements MapObject {
                 ],
                 "red"
             );
+            lerpBrigade.isSpiked = this.prevStates[day - this.dayStart]!.isSpiked;
+            lerpBrigade.directionPoint = this.prevStates[day - this.dayStart]!.directionPoint.copy();
             lerpBrigade.color = this.prevStates[day - this.dayStart]!.color.lerp(this.prevStates[day - this.dayStart + 1]!.color, t);
             return lerpBrigade;
         }

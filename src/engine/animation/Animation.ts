@@ -45,13 +45,8 @@ export default class Animation {
 
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-            if (scene.backgroundImage) {
-                // Левый верх мира в экранных координатах
-                const topLeft = scene.worldToScreen(new Point(0, 0));
-                const width = scene.backgroundImage.width * scene.scale / 25;
-                const height = scene.backgroundImage.height * scene.scale / 25;
-                scene.ctx.drawImage(scene.backgroundImage, topLeft.x, topLeft.y, width, height);
-            }
+            scene.mapController.drawTiles(scene.ctx);
+            
             for (const obj of scene.objects) {
                 const lerpObject = obj.lerpAnimation(day, t);
                 if (lerpObject) lerpObject.draw(scene);

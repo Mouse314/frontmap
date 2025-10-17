@@ -61,7 +61,9 @@ export default function LeftSide({ changeVisible, scene }: LeftSideProps) {
                     }}
                     onClick={() => {
                         if (scene) {
-                            scene.addingObject = new DefenceLine("", new Point(0, 0), 2, [new Point(0, 0), new Point(1, 1), new Point(2, 2), new Point(3, 3)], "rgba(0, 0, 255, 1)");
+                            const startPoint = new Point(0, 0);
+                            const geoDelta = scene.screenToLngLat(new Point(100, 0)).subtract(scene.screenToLngLat(startPoint));
+                            scene.addingObject = new DefenceLine("", new Point(0, 0), 2, [startPoint, startPoint.add(geoDelta.multiply(1)), startPoint.add(geoDelta.multiply(2)), startPoint.add(geoDelta.multiply(3))], "rgba(0, 0, 255, 1)");
                         }
                         setIsVisible(false);
                     }}

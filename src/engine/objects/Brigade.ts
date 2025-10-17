@@ -5,7 +5,7 @@ import type Rect from '../math/Rect.ts';
 import Size from '../math/Size.ts';
 import type Scene from '../state/Scene.ts';
 import type MapObject from './MapObject.ts';
-import type { MapObjectType } from './Types.ts';
+import type { CorpsType, MapObjectType } from './Types.ts';
 
 export default class Brigade implements MapObject {
     deleted: boolean = false;
@@ -19,6 +19,7 @@ export default class Brigade implements MapObject {
     gray: number = 0;
 
     type: MapObjectType = 'Brigade';
+    corpsType: CorpsType = 'Infantry';
 
     prevStates: (Brigade | null)[] = [null, this];
     dayStart: number = 0;
@@ -42,7 +43,7 @@ export default class Brigade implements MapObject {
         this.position = this.position.add(delta);
     }
 
-    calculateScreenScale(scene: Scene): Size {
+    calculateScreenScale(): Size {
         // Optionally: use a fixed pixel size or scale with zoom
         return new Size(Math.max(this.scale, .03) * 20, Math.max(this.scale, .03) * 10);
     }
@@ -50,7 +51,7 @@ export default class Brigade implements MapObject {
     isMouseNear(scene: Scene, mousePos: Point): boolean {
         // Используем lngLatToScreen для точного сравнения
         const screenPoint = scene.lngLatToScreen(this.position.x, this.position.y);
-        const screenSize = this.calculateScreenScale(scene);
+        const screenSize = this.calculateScreenScale();
         if (
             mousePos.x >= screenPoint.x - screenSize.width / 2 &&
             mousePos.x <= screenPoint.x + screenSize.width / 2 &&
@@ -83,60 +84,92 @@ export default class Brigade implements MapObject {
     draw(scene: Scene) {
         const ctx = scene.ctx;
         ctx.save();
-        // Используем lngLatToScreen для точного позиционирования
         const screenPoint = scene.lngLatToScreen(this.position.x, this.position.y);
-        const screenSize = this.calculateScreenScale(scene);
+        const screenSize = this.calculateScreenScale();
 
-        // Мягкая подложка
-        const backColor = this.color.lerp(new Color("rgba(255, 255, 255, 1)"), 0.5).lerp(COLOR_GREY_SOFT, this.gray).toString();
+        // --- Фон/выделение ---
+        if (this.corpsType === 'Tank') {
+            // Для танка: отдельная заливка эллипсоидного прямоугольника
+            ctx.beginPath();
+            ctx.roundRect(
+                screenPoint.x - screenSize.width / 4,
+                screenPoint.y - screenSize.height / 4,
+                screenSize.width / 2,
+                screenSize.height / 2,
+                screenSize.width / 10
+            );
+            ctx.fillStyle = this.isEditingMode ? COLOR_ORANGE.toString() : this.color.lerp(new Color("rgba(255,255,255,1)"), 0.5).lerp(COLOR_GREY_SOFT, this.gray).toString();
+            ctx.fill();
+            ctx.closePath();
 
-        ctx.fillStyle = this.isEditingMode ? COLOR_ORANGE.toString() : backColor;
-        ctx.roundRect(
-            screenPoint.x - screenSize.width / 2,
-            screenPoint.y - screenSize.height / 2,
-            screenSize.width,
-            screenSize.height,
-            screenSize.width / 10
-        );
-        ctx.fill();
+            // Обводка
+            ctx.beginPath();
+            ctx.roundRect(
+                screenPoint.x - screenSize.width / 4,
+                screenPoint.y - screenSize.height / 4,
+                screenSize.width / 2,
+                screenSize.height / 2,
+                screenSize.width / 10
+            );
+            ctx.strokeStyle = this.color.lerp(COLOR_GREY, this.gray).toString();
+            ctx.lineWidth = this.scale * 2;
+            ctx.stroke();
+            ctx.closePath();
+        } else {
+            // Для остальных: заливка и обводка обычного прямоугольника
+            ctx.beginPath();
+            ctx.roundRect(
+                screenPoint.x - screenSize.width / 2,
+                screenPoint.y - screenSize.height / 2,
+                screenSize.width,
+                screenSize.height,
+                screenSize.width / 10
+            );
+            ctx.fillStyle = this.isEditingMode ? COLOR_ORANGE.toString() : this.color.lerp(new Color("rgba(255,255,255,1)"), 0.5).lerp(COLOR_GREY_SOFT, this.gray).toString();
+            ctx.fill();
+            ctx.strokeStyle = this.color.lerp(COLOR_GREY, this.gray).toString();
+            ctx.lineWidth = this.scale * 2;
+            ctx.stroke();
+            ctx.closePath();
+        }
 
-        const mixedColor = this.color.lerp(COLOR_GREY, this.gray).toString();
-
-        // Прямоугольник
-        ctx.strokeStyle = mixedColor;
-        ctx.lineWidth = this.scale * 2;
-        ctx.beginPath();
-        ctx.roundRect(
-            screenPoint.x - screenSize.width / 2,
-            screenPoint.y - screenSize.height / 2,
-            screenSize.width,
-            screenSize.height,
-            screenSize.width / 10
-        );
-        ctx.stroke();
-
-        // Перекрёстные линии
-        ctx.strokeStyle = mixedColor;
-        ctx.lineWidth = this.scale * 2;
-        ctx.beginPath();
-        ctx.moveTo(
-            screenPoint.x - screenSize.width / 2.2,
-            screenPoint.y - screenSize.height / 2.2
-        );
-        ctx.lineTo(
-            screenPoint.x + screenSize.width / 2.2,
-            screenPoint.y + screenSize.height / 2.2
-        );
-        ctx.moveTo(
-            screenPoint.x - screenSize.width / 2.2,
-            screenPoint.y + screenSize.height / 2.2
-        );
-        ctx.lineTo(
-            screenPoint.x + screenSize.width / 2.2,
-            screenPoint.y - screenSize.height / 2.2
-        );
-        ctx.stroke();
-
+        // --- Символика корпуса ---
+        if (this.corpsType === 'Infantry') {
+            ctx.strokeStyle = this.color.lerp(COLOR_GREY, this.gray).toString();
+            ctx.lineWidth = this.scale * 2;
+            ctx.beginPath();
+            ctx.moveTo(
+                screenPoint.x - screenSize.width / 2.2,
+                screenPoint.y - screenSize.height / 2.2
+            );
+            ctx.lineTo(
+                screenPoint.x + screenSize.width / 2.2,
+                screenPoint.y + screenSize.height / 2.2
+            );
+            ctx.moveTo(
+                screenPoint.x - screenSize.width / 2.2,
+                screenPoint.y + screenSize.height / 2.2
+            );
+            ctx.lineTo(
+                screenPoint.x + screenSize.width / 2.2,
+                screenPoint.y - screenSize.height / 2.2
+            );
+            ctx.stroke();
+        }
+        else if (this.corpsType === 'Cavalry') {
+            ctx.strokeStyle = this.color.lerp(COLOR_GREY, this.gray).toString();
+            ctx.lineWidth = this.scale * 2;
+            ctx.beginPath();
+            ctx.moveTo(
+                screenPoint.x - screenSize.width / 2.2,
+                screenPoint.y + screenSize.height / 2.2
+            );
+            ctx.lineTo(
+                screenPoint.x + screenSize.width / 2.2,
+                screenPoint.y - screenSize.height / 2.2
+            );
+            ctx.stroke();
+        }
         ctx.restore();
     }
 

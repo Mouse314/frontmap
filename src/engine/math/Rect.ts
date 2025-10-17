@@ -13,8 +13,8 @@ export default class Rect {
     public draw(scene: Scene) {
         if (!scene) return;
 
-        const start = scene.worldToScreen(this.start);
-        const end = scene.worldToScreen(this.end);
+        const start = scene.lngLatToScreen(this.start.x, this.start.y);
+        const end = scene.lngLatToScreen(this.end.x, this.end.y);
 
         scene.ctx.save();
 

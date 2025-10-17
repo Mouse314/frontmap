@@ -11,6 +11,14 @@ export default class Point {
         return new Point(this.x + other.x, this.y + other.y);
     }
 
+    public subtract(other: Point): Point {
+        return new Point(this.x - other.x, this.y - other.y);
+    }
+
+    public multiply(scalar: number): Point {
+        return new Point(this.x * scalar, this.y * scalar);
+    }
+
     public translate(delta: Point): void {
         this.x += delta.x;
         this.y += delta.y;
@@ -22,9 +30,6 @@ export default class Point {
         return new Point(x, y);
     }
 
-    public subtract(other: Point): Point {
-        return new Point(this.x - other.x, this.y - other.y);
-    }
 
     public setPosition(x: number, y: number) {
         this.x = x;
