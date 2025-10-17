@@ -150,7 +150,6 @@ export default class DefenceLine implements MapObject {
             const p2 = this.points[3];
             const p3 = this.directionPoint;
             const cross = (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
-            console.log("Cross product:", cross);
             const spikeSpacing = 15 + this.scale * 3; // px between spikes
             const spikeLength = 5 + this.scale * 2; // px spike length
             // Approximate curve length

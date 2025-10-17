@@ -174,24 +174,30 @@ export default class Brigade implements MapObject {
     }
 
     public clone(): MapObject {
-        return new Brigade(
+        const clone = new Brigade(
             this.name,
             this.position.copy(),
             this.scale,
             this.color.copy().toString()
         );
+        clone.gray = this.gray;
+        clone.type = this.type;
+        clone.corpsType = this.corpsType;
+        clone.dayStart = this.dayStart;
+        clone.dayEnd = this.dayEnd;
+
+        return clone;
     }
 
     lerpAnimation(day: number, t: number) {
         if (day === this.dayEnd) {
             if (this.prevStates.length < 3) return null;
             // Плавное исчезновение в конце жизненного цикла
-            const lerpBrigade = new Brigade(
-                this.name,
-                this.prevStates[day - this.dayStart]!.position.lerp(this.prevStates[day - this.dayStart + 1]!.position, t),
-                this.prevStates[day - this.dayStart]!.scale + (this.prevStates[day - this.dayStart + 1]!.scale - this.prevStates[day - this.dayStart]!.scale) * t,
-                "red"
-            );
+            const lerpBrigade = this.clone();
+            lerpBrigade.position = this.prevStates[day - this.dayStart]!.position.lerp(this.prevStates[day - this.dayStart + 1]!.position, t);
+            lerpBrigade.scale = this.prevStates[day - this.dayStart]!.scale + (this.prevStates[day - this.dayStart + 1]!.scale - this.prevStates[day - this.dayStart]!.scale) * t;
+            lerpBrigade.color = this.color.copy();
+
             const fadedColor = this.color.copy();
             fadedColor.a = 0;
             lerpBrigade.color = fadedColor.lerp(this.color, 1 - t);
@@ -200,12 +206,9 @@ export default class Brigade implements MapObject {
         }
         else if (day === this.dayStart) {
             // Плавное появления в начале жизненного цикла
-            const lerpBrigade = new Brigade(
-                this.name,
-                this.prevStates[1]!.position,
-                this.prevStates[1]!.scale,
-                "red"
-            );
+            const lerpBrigade = this.clone();
+            lerpBrigade.position = this.prevStates[1]!.position;
+            lerpBrigade.scale = this.prevStates[1]!.scale;
             const fadedColor = this.prevStates[1]!.color.copy();
             fadedColor.a = 0;
             lerpBrigade.color = fadedColor.lerp(this.prevStates[1]!.color, t);
@@ -214,12 +217,9 @@ export default class Brigade implements MapObject {
         }
         else if (day > this.dayStart && day < this.dayEnd) {
             // Плавная трансформация в середине жизненного цикла
-            const lerpBrigade = new Brigade(
-                this.name,
-                this.prevStates[day - this.dayStart]!.position.lerp(this.prevStates[day - this.dayStart + 1]!.position, t),
-                this.prevStates[day - this.dayStart]!.scale + (this.prevStates[day - this.dayStart + 1]!.scale - this.prevStates[day - this.dayStart]!.scale) * t,
-                "red"
-            );
+            const lerpBrigade = this.clone();
+            lerpBrigade.position = this.prevStates[day - this.dayStart]!.position.lerp(this.prevStates[day - this.dayStart + 1]!.position, t);
+            lerpBrigade.scale = this.prevStates[day - this.dayStart]!.scale + (this.prevStates[day - this.dayStart + 1]!.scale - this.prevStates[day - this.dayStart]!.scale) * t;
             lerpBrigade.color = this.prevStates[day - this.dayStart]!.color.lerp(this.prevStates[day - this.dayStart + 1]!.color, t);
             lerpBrigade.gray = this.prevStates[day - this.dayStart]!.gray + (this.prevStates[day - this.dayStart + 1]!.gray - this.prevStates[day - this.dayStart]!.gray) * t;
             return lerpBrigade;

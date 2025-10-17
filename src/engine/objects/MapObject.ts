@@ -12,7 +12,7 @@ export default interface MapObject {
     position: Point; // lng, lat (WGS84)
     scale: number;
     isEditingMode: boolean;
-    type: MapObjectType;
+    type?: MapObjectType;
     color: Color;
     gray?: number;
     dayStart: number;

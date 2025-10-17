@@ -4,7 +4,9 @@ import type Scene from "../state/Scene";
 
 const TILE_SIZE = 256;
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+// const TILE_URL = "https://tile.opentopomap.org/{z}/{x}/{y}.png";
 // const TILE_URL = "https://c.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png";
+// const TILE_URL = "https://tiles.api-maps.yandex.ru/v1/tiles/?apikey=<string>& lang=<string>& x=<integer>& y=<integer>& z=<integer>& l=<string>& [scale=<float>]& [projection=<string>]& [maptype=<string>]"
 
 export default class MapController {
     public scene: Scene;

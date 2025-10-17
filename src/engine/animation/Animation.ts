@@ -1,4 +1,3 @@
-import Point from "../math/Point.ts";
 import type Scene from "../state/Scene.ts";
 import type TimeManager from "./TimeManager.ts";
 

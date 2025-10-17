@@ -18,6 +18,7 @@ export default function RightSide({ changeVisible, selectedObjects, scene }: Rig
   // Группировка объектов
   const brigades = selectedObjects.filter(obj => obj.type === 'Brigade');
   const lines = selectedObjects.filter(obj => obj.type === 'DefenceLine');
+  const battles = selectedObjects.filter(obj => obj.type === 'Battle');
 
   // Для групповых контролов берём первое значение из группы (или дефолт)
   const getGroupValue = (arr: string | any[], key: string, def: string | number) => arr.length ? arr[0][key] : def;
@@ -58,6 +59,22 @@ export default function RightSide({ changeVisible, selectedObjects, scene }: Rig
       <h2>Right Side</h2>
       <h3>objects selected</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {battles.length > 0 && (
+            <div style={{ border: '1px solid #aaa', borderRadius: '8px', padding: '12px', background: '#fffbe8', boxShadow: '0 2px 8px rgba(255,200,0,0.04)' }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Бои: {battles.length} шт.</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <label style={{ fontSize: 13 }}>Scale:</label>
+                <input
+                  type="number"
+                  value={getGroupValue(battles, 'scale', 1)}
+                  min={0.01}
+                  step={0.01}
+                  style={{ width: 60 }}
+                  onChange={e => handleGroupScale(battles, parseFloat(e.target.value))}
+                />
+              </div>
+            </div>
+          )}
         {brigades.length > 0 && (
           <div style={{ border: '1px solid #aaa', borderRadius: '8px', padding: '12px', background: '#f8f8ff', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>Бригады: {brigades.length} шт.</div>

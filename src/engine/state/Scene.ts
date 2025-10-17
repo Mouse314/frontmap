@@ -136,10 +136,6 @@ export default class Scene {
         this.mapController = new MapController(this);
         this.scale = this.calcScale(this.mapController.zoom); // px per degree
 
-
-        this.render();
-
-
         // Canvas background image
         this.lastMousePos = new Point(0, 0);
         this.timeManager = new TimeManager('days');
@@ -313,10 +309,7 @@ export default class Scene {
             if (this.selectedObjects.length > 0) {
                 if (this.isMouseAnyNear) {
                     this.selectedObjects.forEach(object => {
-                        if (object.type === 'Brigade') {
-                            object.translate(geoMouseDelta);
-                        }
-                        else if (object.type === 'DefenceLine') {
+                        if (object.type === 'DefenceLine') {
                             if (this.selectedObjects.length > 1 || this.isShifting) {
                                 object.translate(geoMouseDelta);
                             }
@@ -325,6 +318,9 @@ export default class Scene {
                                     object.translate(geoMouseDelta, this.defenceLineNearestPoint);
                                 }
                             }
+                        }
+                        else {
+                            object.translate(geoMouseDelta);
                         }
                     });
                     this.render();

@@ -3,6 +3,7 @@ import Brigade from "../engine/objects/Brigade.ts";
 import Point from "../engine/math/Point.ts";
 import DefenceLine from "../engine/objects/DefenceLine.ts";
 import type Scene from "../engine/state/Scene.ts";
+import Battle from "../engine/objects/Battle.ts";
 
 type LeftSideProps = {
     changeVisible: (visible: boolean) => void;
@@ -69,6 +70,27 @@ export default function LeftSide({ changeVisible, scene }: LeftSideProps) {
                     }}
                 >
                     линия обороны
+                </button>
+                <button
+                    style={{
+                        padding: '12px 24px',
+                        borderRadius: 8,
+                        border: 'none',
+                        background: scene ? 'linear-gradient(90deg, #979911ff 0%, #efaf38ff 100%)' : 'gray',
+                        color: 'white',
+                        fontWeight: 600,
+                        fontSize: 18,
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                    }}
+                    onClick={() => {
+                        if (scene) {
+                            scene.addingObject = new Battle("", new Point(0, 0), 2, "rgba(0, 0, 255, 1)");
+                        }
+                        setIsVisible(false);
+                    }}
+                >
+                    битва
                 </button>
             </div>
         </aside>
