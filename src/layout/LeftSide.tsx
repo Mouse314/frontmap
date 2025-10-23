@@ -4,6 +4,7 @@ import Point from "../engine/math/Point.ts";
 import DefenceLine from "../engine/objects/DefenceLine.ts";
 import type Scene from "../engine/state/Scene.ts";
 import Battle from "../engine/objects/Battle.ts";
+import BattleLine from "../engine/objects/BattleLine.ts";
 
 type LeftSideProps = {
     changeVisible: (visible: boolean) => void;
@@ -91,6 +92,29 @@ export default function LeftSide({ changeVisible, scene }: LeftSideProps) {
                     }}
                 >
                     битва
+                </button>
+                <button
+                    style={{
+                        padding: '12px 24px',
+                        borderRadius: 8,
+                        border: 'none',
+                        background: scene ? 'linear-gradient(90deg, #ff8008 0%, #ffc837 100%)' : 'gray',
+                        color: 'white',
+                        fontWeight: 600,
+                        fontSize: 18,
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                    }}
+                    onClick={() => {
+                        if (scene) {
+                            const startPoint = new Point(0, 0);
+                            const geoDelta = scene.screenToLngLat(new Point(100, 0)).subtract(scene.screenToLngLat(startPoint));
+                            scene.addingObject = new BattleLine("", new Point(0, 0), 1, [startPoint, startPoint.add(geoDelta.multiply(1)), startPoint.add(geoDelta.multiply(2)), startPoint.add(geoDelta.multiply(3))], "rgba(255, 255, 255, 1)");
+                        }
+                        setIsVisible(false);
+                    }}
+                >
+                    линия боёв
                 </button>
             </div>
         </aside>

@@ -319,6 +319,16 @@ export default class Scene {
                                 }
                             }
                         }
+                        else if (object.type === 'BattleLine') {
+                            if (this.selectedObjects.length > 1 || this.isShifting) {
+                                object.translate(geoMouseDelta);
+                            }
+                            else {
+                                if (this.defenceLineNearestPoint) {
+                                    object.translate(geoMouseDelta, this.defenceLineNearestPoint);
+                                }
+                            }
+                        }
                         else {
                             object.translate(geoMouseDelta);
                         }

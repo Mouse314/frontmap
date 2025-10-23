@@ -15,7 +15,7 @@ export default class DefenceLine implements MapObject {
     position: Point;
     scale: number;
     points: Point[];
-    directionPoint: Point;
+    attackDirectionFlag: boolean = false;
     color: Color;
     spikesNum: number = 20;
     isEditingMode: boolean;
@@ -37,8 +37,6 @@ export default class DefenceLine implements MapObject {
         this.points = points;
         this.color = new Color(color);
 
-        this.directionPoint = new Point((points[0].x + points[3].x) / 2, (points[0].y + points[3].y) / 2);
-
         this.isEditingMode = false;
     }
 
@@ -51,7 +49,6 @@ export default class DefenceLine implements MapObject {
         for (let i = 0; i < this.points.length; i++) {
             this.points[i] = this.points[i].add(delta);
         }
-        this.directionPoint = new Point((this.points[0].x + this.points[3].x) / 2, (this.points[0].y + this.points[3].y) / 2);
     }
 
     // delta: Point (lng, lat)
@@ -63,7 +60,6 @@ export default class DefenceLine implements MapObject {
                 this.points[i] = this.points[i].add(delta);
             }
             this.position = this.position.add(delta);
-            this.directionPoint = new Point((this.points[0].x + this.points[3].x) / 2, (this.points[0].y + this.points[3].y) / 2);
         }
     }
 
@@ -87,9 +83,22 @@ export default class DefenceLine implements MapObject {
         );
     }
 
+    private findTforPoint(p1: Point, p2: Point, p3: Point, p4: Point, target: Point): number | null {
+        const precision = 0.001;
+        let t = 0;
+        while (t <= 1) {
+            const point = this.bezierPoint(p1, p2, p3, p4, t);
+            if (point.distanceTo(target) < precision * 2) {
+                return t;
+            }
+            t += precision;
+        }
+        return null;
+    }
+
     isMouseNear(scene: Scene, mousePos: Point): boolean {
         // Используем lngLatToScreen для точного сравнения, как в Brigade
-        for (const point of [...this.points, this.directionPoint]) {
+        for (const point of this.points) {
             const screenPoint = scene.lngLatToScreen(point.x, point.y);
             if (
                 Math.abs(screenPoint.x - mousePos.x) < 10 &&
@@ -102,7 +111,7 @@ export default class DefenceLine implements MapObject {
     }
 
     getNearestPoint(scene: Scene, mousePos: Point): Point | null {
-        for (const point of [...this.points, this.directionPoint]) {
+        for (const point of this.points) {
             const screenPoint = scene.lngLatToScreen(point.x, point.y);
             if (
                 Math.abs(screenPoint.x - mousePos.x) < 10 &&
@@ -137,19 +146,68 @@ export default class DefenceLine implements MapObject {
         ctx.fillStyle = mixColor.toString();
         ctx.strokeStyle = mixColor.toString();
         ctx.lineCap = "round";
-        // Draw curve
-        ctx.lineWidth = this.scale * 2;
+
+        // --- Рисуем свечение ---
+        const thickness = this.scale * 2;
+        ctx.save();
         ctx.beginPath();
         ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
         ctx.bezierCurveTo(screenPoints[1].x, screenPoints[1].y, screenPoints[2].x, screenPoints[2].y, screenPoints[3].x, screenPoints[3].y);
+        ctx.strokeStyle = this.color.toString();
+        ctx.lineWidth = thickness / 2;
+        ctx.shadowColor = this.color.toString();
+        ctx.shadowBlur = thickness * 4;
         ctx.stroke();
+        ctx.restore();
+
+        // --- Рисуем кривую Безье и ее "толщину" ---
+        const offset = this.scale * 2.5; // Толщина в пикселях
+        const steps = 30; // Количество сегментов для аппроксимации
+        
+        // Определяем сторону смещения в зависимости от положения directionPoint
+        const offsetDirection = this.attackDirectionFlag ? -1 : 1;
+
+        // --- Рисуем область с градиентом ---
+        const gradientOffset = offset * 6; // Ширина области градиента
+        
+        const gradColor = this.color.copy();
+        const startColor = `rgba(${gradColor.r}, ${gradColor.g}, ${gradColor.b}, 0.4)`;
+        const endColor = `rgba(${gradColor.r}, ${gradColor.g}, ${gradColor.b}, 0)`;
+
+        for (let i = 0; i < steps; i++) {
+            const t1 = i / steps;
+            const t2 = (i + 1) / steps;
+
+            const p_start1 = this.bezierPoint(screenPoints[0], screenPoints[1], screenPoints[2], screenPoints[3], t1);
+            const p_start2 = this.bezierPoint(screenPoints[0], screenPoints[1], screenPoints[2], screenPoints[3], t2);
+
+            const tangent1 = this.bezierTangent(screenPoints[0], screenPoints[1], screenPoints[2], screenPoints[3], t1);
+            const perp1 = new Point(-tangent1.y, tangent1.x).normalize().multiply(offsetDirection);
+            const p_end1 = p_start1.add(perp1.multiply(gradientOffset));
+
+            const tangent2 = this.bezierTangent(screenPoints[0], screenPoints[1], screenPoints[2], screenPoints[3], t2);
+            const perp2 = new Point(-tangent2.y, tangent2.x).normalize().multiply(offsetDirection);
+            const p_end2 = p_start2.add(perp2.multiply(gradientOffset));
+
+            // Создаем градиент для этого сегмента
+            const gradient = ctx.createLinearGradient(p_start1.x, p_start1.y, p_end1.x, p_end1.y);
+            gradient.addColorStop(0, startColor);
+            gradient.addColorStop(1, endColor);
+
+            // Рисуем сегмент (трапецию)
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.moveTo(p_start1.x, p_start1.y);
+            ctx.lineTo(p_start2.x, p_start2.y);
+            ctx.lineTo(p_end2.x, p_end2.y);
+            ctx.lineTo(p_end1.x, p_end1.y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
         ctx.beginPath();
-        // Draw spikes with fixed spacing
+        // Рисуем шипы с фиксированным интервалом
         if (this.isSpiked) {
-            const p1 = this.points[0];
-            const p2 = this.points[3];
-            const p3 = this.directionPoint;
-            const cross = (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
             const spikeSpacing = 15 + this.scale * 3; // px between spikes
             const spikeLength = 5 + this.scale * 2; // px spike length
             // Approximate curve length
@@ -177,12 +235,11 @@ export default class DefenceLine implements MapObject {
                 }
                 ctx.beginPath();
                 ctx.moveTo(point.x, point.y);
-                ctx.lineTo(point.x + (cross < 0 ? perp.x : -perp.x) * spikeLength, point.y + (cross < 0 ? perp.y : -perp.y) * spikeLength);
+                ctx.lineTo(point.x + (this.attackDirectionFlag ? perp.x : -perp.x) * spikeLength, point.y + (this.attackDirectionFlag ? perp.y : -perp.y) * spikeLength);
                 ctx.stroke();
             }
         }
-        const screenDirectionPoint = scene.lngLatToScreen(this.directionPoint.x, this.directionPoint.y);
-        // Draw points
+        // Рисуем точки
         if (this.isEditingMode) {
             ctx.fillStyle = "purple";
             screenPoints.forEach(point => {
@@ -190,10 +247,6 @@ export default class DefenceLine implements MapObject {
                 ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
                 ctx.fill();
             });
-            ctx.fillStyle = "magenta";
-            ctx.beginPath();
-            ctx.arc(screenDirectionPoint.x, screenDirectionPoint.y, 5, 0, Math.PI * 2);
-            ctx.fill();
         }
         ctx.restore();
     }
@@ -207,7 +260,7 @@ export default class DefenceLine implements MapObject {
             this.color.copy().toString()
         );
         newDefenceLine.isSpiked = this.isSpiked;
-        newDefenceLine.directionPoint = this.directionPoint.copy();
+        newDefenceLine.attackDirectionFlag = this.attackDirectionFlag;
         return newDefenceLine;
     }
     
@@ -223,7 +276,7 @@ export default class DefenceLine implements MapObject {
                 "red"
             );
             lerpBrigade.isSpiked = this.prevStates[day - this.dayStart]!.isSpiked;
-            lerpBrigade.directionPoint = this.prevStates[day - this.dayStart]!.directionPoint.copy();
+            lerpBrigade.attackDirectionFlag = this.prevStates[day - this.dayStart]!.attackDirectionFlag;
             const fadedColor = this.color.copy();
             fadedColor.a = 0;
             lerpBrigade.color = fadedColor.lerp(this.color, 1 - t);
@@ -239,7 +292,7 @@ export default class DefenceLine implements MapObject {
                 "red"
             );
             lerpBrigade.isSpiked = this.prevStates[1]!.isSpiked;
-            lerpBrigade.directionPoint = this.prevStates[1]!.directionPoint.copy();
+            lerpBrigade.attackDirectionFlag = this.prevStates[1]!.attackDirectionFlag;
             const fadedColor = this.color.copy();
             fadedColor.a = 0;
             lerpBrigade.color = fadedColor.lerp(this.color, t);
@@ -260,7 +313,7 @@ export default class DefenceLine implements MapObject {
                 "red"
             );
             lerpBrigade.isSpiked = this.prevStates[day - this.dayStart]!.isSpiked;
-            lerpBrigade.directionPoint = this.prevStates[day - this.dayStart]!.directionPoint.copy();
+            lerpBrigade.attackDirectionFlag = this.prevStates[day - this.dayStart]!.attackDirectionFlag;
             lerpBrigade.color = this.prevStates[day - this.dayStart]!.color.lerp(this.prevStates[day - this.dayStart + 1]!.color, t);
             return lerpBrigade;
         }

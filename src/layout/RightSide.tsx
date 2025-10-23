@@ -19,9 +19,15 @@ export default function RightSide({ changeVisible, selectedObjects, scene }: Rig
   const brigades = selectedObjects.filter(obj => obj.type === 'Brigade');
   const lines = selectedObjects.filter(obj => obj.type === 'DefenceLine');
   const battles = selectedObjects.filter(obj => obj.type === 'Battle');
+  const battleLines = selectedObjects.filter(obj => obj.type === 'BattleLine');
 
   // Для групповых контролов берём первое значение из группы (или дефолт)
   const getGroupValue = (arr: string | any[], key: string, def: string | number) => arr.length ? arr[0][key] : def;
+  
+  const handleGroupGlowDirection = (arr: any[], value: 'both' | 'left' | 'right') => {
+    arr.forEach(obj => { obj.glowDirection = value; });
+    scene?.render();
+  };
 
   // Групповые обработчики
   const handleGroupScale = (arr: any[], value: number) => {
@@ -173,6 +179,34 @@ export default function RightSide({ changeVisible, selectedObjects, scene }: Rig
                 id="spiked-checkbox"
               />
               <label htmlFor="spiked-checkbox" style={{ fontSize: 13, userSelect: 'none', cursor: 'pointer' }}>С шипами</label>
+            </div>
+          </div>
+        )}
+        {battleLines.length > 0 && (
+          <div style={{ border: '1px solid #aaa', borderRadius: '8px', padding: '12px', background: '#fffbe8', boxShadow: '0 2px 8px rgba(255,200,0,0.04)' }}>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>Линии боёв: {battleLines.length} шт.</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ fontSize: 13 }}>Scale:</label>
+              <input
+                type="number"
+                value={getGroupValue(battleLines, 'scale', 1)}
+                min={0.01}
+                step={0.01}
+                style={{ width: 60 }}
+                onChange={e => handleGroupScale(battleLines, parseFloat(e.target.value))}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+              <label style={{ fontSize: 13 }}>Свечение:</label>
+              <select
+                value={getGroupValue(battleLines, 'glowDirection', 'both')}
+                onChange={e => handleGroupGlowDirection(battleLines, e.target.value as 'both' | 'left' | 'right')}
+                style={{ fontSize: 14 }}
+              >
+                <option value="both">В обе стороны</option>
+                <option value="left">Влево</option>
+                <option value="right">Вправо</option>
+              </select>
             </div>
           </div>
         )}

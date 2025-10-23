@@ -19,6 +19,22 @@ export default class Point {
         return new Point(this.x * scalar, this.y * scalar);
     }
 
+    public getPerpendicular(): Point {
+        return new Point(-this.y, this.x);
+    }
+
+    public distanceTo(other: Point): number {
+        const dx = this.x - other.x;
+        const dy = this.y - other.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    public normalize(): Point {
+        const length = Math.sqrt(this.x * this.x + this.y * this.y);
+        if (length === 0) return new Point(0, 0);
+        return new Point(this.x / length, this.y / length);
+    }
+
     public translate(delta: Point): void {
         this.x += delta.x;
         this.y += delta.y;
