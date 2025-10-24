@@ -1,10 +1,12 @@
 import Animation from "../animation/Animation.ts";
 import TimeManager from "../animation/TimeManager.ts";
+import Color from "../color/Color.ts";
 import MapController from "../GIS/MapController.ts";
 import Point from "../math/Point.ts";
 import Rect from "../math/Rect.ts";
 import Size from "../math/Size.ts";
 import type MapObject from "../objects/MapObject.ts";
+import type Effector from "../shaderOverlay/effector.ts";
 
 export default class Scene {
     /**
@@ -118,6 +120,9 @@ export default class Scene {
 
     // GIS
     public mapController: MapController;
+
+    // Effector
+    public effector: Effector | null = null;
 
     constructor(canvas: HTMLCanvasElement) {
 
@@ -557,6 +562,7 @@ export default class Scene {
             this.selectionRect.draw(this);
         }
 
+        // Обновление эффектора
 
         // Обновление Реакт окружения
         for (const object of this.objects) {

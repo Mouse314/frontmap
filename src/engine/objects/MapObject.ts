@@ -4,10 +4,8 @@ import type Rect from "../math/Rect.ts";
 import type Scene from "../state/Scene.ts";
 import type { MapObjectType } from "./Types.ts";
 
-// All coordinates are now in WGS84 (lng, lat)
 export default interface MapObject {
     deleted : boolean;
-    // Unique identifier for the object
     name: string;
     position: Point; // lng, lat (WGS84)
     scale: number;

@@ -83,19 +83,6 @@ export default class DefenceLine implements MapObject {
         );
     }
 
-    private findTforPoint(p1: Point, p2: Point, p3: Point, p4: Point, target: Point): number | null {
-        const precision = 0.001;
-        let t = 0;
-        while (t <= 1) {
-            const point = this.bezierPoint(p1, p2, p3, p4, t);
-            if (point.distanceTo(target) < precision * 2) {
-                return t;
-            }
-            t += precision;
-        }
-        return null;
-    }
-
     isMouseNear(scene: Scene, mousePos: Point): boolean {
         // Используем lngLatToScreen для точного сравнения, как в Brigade
         for (const point of this.points) {

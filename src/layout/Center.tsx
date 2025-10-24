@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { initCanvas } from "../engine/main.ts";
 import type Scene from "../engine/state/Scene.ts";
 import type MapObject from "../engine/objects/MapObject.ts";
+import Effector from "../engine/shaderOverlay/effector.ts";
 
 type CenterProps = {
     setScene: (scene: Scene | null) => void;
@@ -11,16 +12,22 @@ type CenterProps = {
 
 export default function Center({ setScene, setSelectedObjects }: CenterProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const effectorCanvasRef = useRef<HTMLCanvasElement>(null);
     const sceneRef = useRef<Scene | null>(null);
 
     useEffect(() => {
+        const effector = new Effector();
+        effectorCanvasRef.current = effector.getCanvas();
+
         const canvas = canvasRef.current;
         if (canvas) {
             const scene = initCanvas(canvas);
             scene.setSelectedObjects = setSelectedObjects;
+            scene.effector = effector;
             sceneRef.current = scene;
             setScene(scene);
         }
+
         return () => {
             if (canvas) {
                 const ctx = canvas.getContext("2d");
@@ -29,40 +36,27 @@ export default function Center({ setScene, setSelectedObjects }: CenterProps) {
         };
     }, []);
 
-    // Mouse event delegation from Leaflet to Scene
-    // useEffect(() => {
-    //     const leafletDiv = document.getElementById('leaflet-map');
-    //     const scene = sceneRef.current;
-    //     if (!leafletDiv || !scene) return;
+    const effectorContainerRef = useRef<HTMLDivElement>(null);
 
-    //     // Handlers that delegate to Scene
-    //     const handleMouseDown = (e: MouseEvent) => scene.onMouseDown && scene.onMouseDown(e);
-    //     const handleMouseUp = (e: MouseEvent) => scene.onMouseUp && scene.onMouseUp(e);
-    //     const handleMouseMove = (e: MouseEvent) => scene.onMouseMove && scene.onMouseMove(e);
-    //     const handleContextMenu = (e: MouseEvent) => scene.onContextMenu && scene.onContextMenu(e);
-    //     const handleWheel = (e: WheelEvent) => scene.onMouseWheel && scene.onMouseWheel(e);
-
-    //     leafletDiv.addEventListener('mousedown', handleMouseDown);
-    //     leafletDiv.addEventListener('mouseup', handleMouseUp);
-    //     leafletDiv.addEventListener('mousemove', handleMouseMove);
-    //     leafletDiv.addEventListener('contextmenu', handleContextMenu);
-    //     leafletDiv.addEventListener('wheel', handleWheel);
-
-    //     return () => {
-    //         leafletDiv.removeEventListener('mousedown', handleMouseDown);
-    //         leafletDiv.removeEventListener('mouseup', handleMouseUp);
-    //         leafletDiv.removeEventListener('mousemove', handleMouseMove);
-    //         leafletDiv.removeEventListener('contextmenu', handleContextMenu);
-    //         leafletDiv.removeEventListener('wheel', handleWheel);
-    //     };
-    // }, [sceneRef.current]);
+    useEffect(() => {
+        if (effectorCanvasRef.current && effectorContainerRef.current) {
+            const effectorCanvas = effectorCanvasRef.current;
+            effectorCanvas.style.width = '100%';
+            effectorCanvas.style.height = '100%';
+            effectorCanvas.style.position = 'absolute';
+            effectorCanvas.style.top = '0';
+            effectorCanvas.style.left = '0';
+            effectorContainerRef.current.innerHTML = "";
+            effectorContainerRef.current.appendChild(effectorCanvas);
+        }
+    }, [effectorCanvasRef.current]);
 
     return (
         <>
             <div style={{ position: 'relative', width: '100%', height: '100%', zIndex: -1 }}>
-                {/* <LeafletMap /> */}
             </div>
             <canvas id="map" ref={canvasRef} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 0, pointerEvents: 'all', background: 'black' }}></canvas>
+            <div ref={effectorContainerRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' }} />
         </>
     );
 }

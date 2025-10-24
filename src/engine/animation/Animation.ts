@@ -45,12 +45,20 @@ export default class Animation {
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
             scene.mapController.drawTiles(scene.ctx);
-            
+
             for (const obj of scene.objects) {
                 const lerpObject = obj.lerpAnimation(day, t);
                 if (lerpObject) lerpObject.draw(scene);
             }
 
+            
+            // Отрисовка даты
+            scene.ctx.save();
+            scene.ctx.font = '32px Arial';
+            scene.ctx.fillStyle = 'black';
+            scene.ctx.fillText(`${this._timeManager.getDateString()}`, 150, 200);
+            scene.ctx.restore();
+            
             if (t < 1) {
                 this._rafId = requestAnimationFrame(animate);
             } else {
@@ -60,6 +68,7 @@ export default class Animation {
             }
         };
         this._rafId = requestAnimationFrame(animate);
+        this._timeManager.addDays(1);
     }
 
     pause() {
